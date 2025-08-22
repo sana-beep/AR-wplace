@@ -145,6 +145,8 @@
     <div id="controls">
         <button class="control-btn" onclick="toggleDebug()">🐛 Debug</button>
         <button class="control-btn" onclick="clearAllObjects()">🗑️ Clear</button>
+        <button class="control-btn" onclick="enableSurfaceDetection()">🔍 Enable Surface</button>
+        <button class="control-btn" onclick="testObjectPlacement()">🧪 Test Object</button>
     </div>
     
     <!-- Debug Information -->
@@ -231,7 +233,15 @@
             console.log('🚀 AR Surface Detection App Loading...');
             initializeAR();
             initializeTouchGestures();
-            updateStatus('🔍 Scanning for surfaces...');
+            updateStatus('🔍 Loading AR session...');
+            
+            // Add manual surface detection button functionality
+            document.addEventListener('click', function(event) {
+                if (event.target.classList.contains('control-btn') && 
+                    event.target.textContent.includes('Enable Surface')) {
+                    enableSurfaceDetection();
+                }
+            });
         });
         
         // Initialize AR session and surface detection
@@ -240,6 +250,12 @@
             
             // Get AR.js scene
             const scene = document.querySelector('a-scene');
+            
+            // Wait for AR.js to be ready
+            scene.addEventListener('loaded', function() {
+                console.log('✅ A-Frame scene loaded');
+                checkCameraAccess();
+            });
             
             // Wait for AR.js to be ready
             scene.addEventListener('arjs-nft-loaded', function() {
@@ -262,6 +278,29 @@
             setTimeout(startSurfaceDetection, 2000);
         }
         
+        // Check camera access
+        function checkCameraAccess() {
+            console.log('📷 Checking camera access...');
+            
+            if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+                    .then(function(stream) {
+                        console.log('✅ Camera access granted');
+                        updateStatus('📷 Camera ready - Enable surface detection to start');
+                        
+                        // Stop the stream since AR.js will handle it
+                        stream.getTracks().forEach(track => track.stop());
+                    })
+                    .catch(function(error) {
+                        console.error('❌ Camera access denied:', error);
+                        updateStatus('❌ Camera access denied - Please allow camera access');
+                    });
+            } else {
+                console.warn('⚠️ Camera API not supported');
+                updateStatus('⚠️ Camera not supported on this device');
+            }
+        }
+        
         // ============================================================================
         // SURFACE DETECTION SYSTEM
         // ============================================================================
@@ -271,23 +310,11 @@
             console.log('🔍 Starting surface detection...');
             surfaceDetectionActive = true;
             
-            // Use device orientation to detect horizontal surfaces
-            if (window.DeviceOrientationEvent) {
-                window.addEventListener('deviceorientation', function(event) {
-                    if (surfaceDetectionActive) {
-                        analyzeDeviceOrientation(event);
-                    }
-                });
-            }
-            
-            // Use device motion to detect stable surfaces
-            if (window.DeviceMotionEvent) {
-                window.addEventListener('devicemotion', function(event) {
-                    if (surfaceDetectionActive) {
-                        analyzeDeviceMotion(event);
-                    }
-                });
-            }
+            // Enable surface detection immediately for testing
+            // In a real app, you'd use AR.js plane detection or device sensors
+            setTimeout(() => {
+                enableSurfaceDetection();
+            }, 1000);
             
             // Request permissions for iOS
             if (window.DeviceMotionEvent && 'requestPermission' in DeviceMotionEvent) {
@@ -298,47 +325,40 @@
                 });
             }
             
-            updateStatus('👆 Point camera at a flat surface and tap to place objects');
+            updateStatus('👆 Surface detection enabled - Tap anywhere to place objects');
         }
         
-        // Analyze device orientation to detect horizontal surfaces
-        function analyzeDeviceOrientation(event) {
-            const beta = event.beta; // X-axis rotation (front/back tilt)
-            const gamma = event.gamma; // Y-axis rotation (left/right tilt)
-            
-            // Check if device is relatively level (horizontal surface)
-            if (Math.abs(beta) < 15 && Math.abs(gamma) < 15) {
-                if (!surfaceDetected) {
-                    surfaceDetected = true;
-                    console.log('✅ Horizontal surface detected');
-                    updateStatus('✅ Surface detected! Tap to place objects');
-                    showSurfaceFeedback();
-                }
-            } else {
-                if (surfaceDetected) {
-                    surfaceDetected = false;
-                    console.log('❌ Surface lost');
-                    updateStatus('🔍 Scanning for surfaces...');
-                    hideSurfaceFeedback();
-                }
+        // Enable surface detection (simplified approach)
+        function enableSurfaceDetection() {
+            if (!surfaceDetected) {
+                surfaceDetected = true;
+                console.log('✅ Surface detection enabled');
+                updateStatus('✅ Ready! Tap anywhere to place objects');
+                showSurfaceFeedback();
             }
         }
         
-        // Analyze device motion to detect stable surfaces
-        function analyzeDeviceMotion(event) {
-            const acceleration = event.accelerationIncludingGravity;
-            if (!acceleration) return;
-            
-            const x = acceleration.x || 0;
-            const y = acceleration.y || 0;
-            const z = acceleration.z || 0;
-            
-            // Calculate motion magnitude
-            const motionMagnitude = Math.sqrt(x*x + y*y + z*z);
-            
-            // If motion is very low, surface is stable
-            if (motionMagnitude < 0.5 && surfaceDetected) {
-                updateStatus('✅ Stable surface detected - Ready for placement');
+        // Simple surface detection using device stability
+        function checkDeviceStability() {
+            if (window.DeviceMotionEvent) {
+                window.addEventListener('devicemotion', function(event) {
+                    if (!surfaceDetectionActive) return;
+                    
+                    const acceleration = event.accelerationIncludingGravity;
+                    if (!acceleration) return;
+                    
+                    const x = acceleration.x || 0;
+                    const y = acceleration.y || 0;
+                    const z = acceleration.z || 0;
+                    
+                    // Calculate motion magnitude
+                    const motionMagnitude = Math.sqrt(x*x + y*y + z*z);
+                    
+                    // If device is stable, enable surface detection
+                    if (motionMagnitude < 1.0 && !surfaceDetected) {
+                        enableSurfaceDetection();
+                    }
+                });
             }
         }
         
@@ -426,14 +446,30 @@
         
         // Convert screen coordinates to world coordinates
         function screenToWorldPosition(screenX, screenY) {
-            // Simple conversion - you can make this more sophisticated
-            const normalizedX = (screenX / window.innerWidth - 0.5) * 10;
-            const normalizedZ = (screenY / window.innerHeight - 0.5) * 10;
+            // Get camera position and rotation
+            const camera = document.querySelector('[camera]');
+            if (!camera) {
+                console.warn('Camera not found, using default positioning');
+                return { x: 0, y: 0, z: -3 };
+            }
+            
+            // Normalize screen coordinates (-1 to 1)
+            const normalizedX = (screenX / window.innerWidth - 0.5) * 2;
+            const normalizedY = (screenY / window.innerHeight - 0.5) * 2;
+            
+            // Calculate world position relative to camera
+            const distance = 3; // Distance from camera
+            const worldX = normalizedX * distance;
+            const worldY = -normalizedY * distance; // Invert Y axis
+            const worldZ = -distance; // Place in front of camera
+            
+            console.log('Screen coords:', screenX, screenY);
+            console.log('World coords:', worldX, worldY, worldZ);
             
             return {
-                x: normalizedX,
-                y: 0, // Place on ground level
-                z: -5 + normalizedZ // Adjust depth based on screen position
+                x: worldX,
+                y: worldY,
+                z: worldZ
             };
         }
         
@@ -511,8 +547,7 @@
         function handleTouchStart(event) {
             if (!selectedObject) return;
             
-            event.preventDefault();
-            
+            // Only prevent default for object manipulation, not camera movement
             if (event.touches.length === 1) {
                 // Single finger - prepare for rotation
                 touchStart.x = event.touches[0].clientX;
@@ -754,6 +789,22 @@
             
             updateStatus('🗑️ All objects cleared');
             updateDebugInfo();
+        }
+        
+        // Test object placement function
+        function testObjectPlacement() {
+            console.log('🧪 Testing object placement...');
+            
+            if (!surfaceDetected) {
+                updateStatus('❌ Surface detection not enabled - Enable it first');
+                return;
+            }
+            
+            // Place a test cube at a fixed position
+            const testPosition = { x: 0, y: 0, z: -3 };
+            placeCube(testPosition);
+            
+            updateStatus('🧪 Test object placed - Check if it appears in AR view');
         }
         
         // ============================================================================
