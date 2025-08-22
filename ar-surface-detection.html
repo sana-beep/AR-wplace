@@ -1,0 +1,794 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>AR Surface Detection & Object Placement</title>
+    
+    <!-- A-Frame and AR.js libraries -->
+    <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
+    
+    <style>
+        /* Fullscreen mobile-friendly styling */
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #000;
+            color: white;
+            touch-action: none; /* Prevent default touch behaviors */
+        }
+        
+        /* AR Session Status Panel */
+        #status-panel {
+            position: fixed;
+            top: env(safe-area-inset-top, 20px);
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px 25px;
+            border-radius: 25px;
+            z-index: 1000;
+            text-align: center;
+            backdrop-filter: blur(10px);
+            border: 2px solid #007AFF;
+        }
+        
+        #status-text {
+            font-size: 16px;
+            font-weight: bold;
+            margin: 0;
+        }
+        
+        /* Instructions Panel */
+        #instructions {
+            position: fixed;
+            bottom: env(safe-area-inset-bottom, 20px);
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border-radius: 15px;
+            z-index: 1000;
+            text-align: center;
+            backdrop-filter: blur(10px);
+            max-width: 300px;
+        }
+        
+        .instruction-text {
+            font-size: 12px;
+            margin: 5px 0;
+            opacity: 0.9;
+        }
+        
+        /* Surface Detection Visual Feedback */
+        .surface-marker {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background: #00FF00;
+            border-radius: 50%;
+            border: 2px solid #FFFFFF;
+            pointer-events: none;
+            z-index: 999;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.5); opacity: 0.7; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        
+        /* Object Selection Highlight */
+        .selected-object {
+            outline: 3px solid #FFD700;
+            outline-offset: 2px;
+        }
+        
+        /* Debug Info (hidden by default) */
+        #debug-info {
+            position: fixed;
+            top: env(safe-area-inset-top, 80px);
+            right: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px;
+            border-radius: 10px;
+            font-size: 10px;
+            z-index: 1000;
+            display: none;
+        }
+        
+        /* Control Buttons */
+        #controls {
+            position: fixed;
+            top: env(safe-area-inset-top, 20px);
+            right: 20px;
+            z-index: 1000;
+        }
+        
+        .control-btn {
+            background: #007AFF;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            margin: 2px;
+            cursor: pointer;
+        }
+        
+        .control-btn:active {
+            background: #0056CC;
+            transform: scale(0.95);
+        }
+    </style>
+</head>
+<body>
+    <!-- Status Panel -->
+    <div id="status-panel">
+        <p id="status-text">🔍 Detecting surfaces...</p>
+    </div>
+    
+    <!-- Instructions Panel -->
+    <div id="instructions">
+        <div class="instruction-text">👆 Tap to place cube</div>
+        <div class="instruction-text">🔄 One finger: Rotate</div>
+        <div class="instruction-text">📏 Two finger: Scale</div>
+        <div class="instruction-text">🚀 Two finger: Move</div>
+    </div>
+    
+    <!-- Control Buttons -->
+    <div id="controls">
+        <button class="control-btn" onclick="toggleDebug()">🐛 Debug</button>
+        <button class="control-btn" onclick="clearAllObjects()">🗑️ Clear</button>
+    </div>
+    
+    <!-- Debug Information -->
+    <div id="debug-info">
+        <div>Surface Count: <span id="surface-count">0</span></div>
+        <div>Object Count: <span id="object-count">0</span></div>
+        <div>Touch Points: <span id="touch-points">0</span></div>
+    </div>
+    
+    <!-- AR Scene with Surface Detection -->
+    <a-scene 
+        embedded 
+        arjs="sourceType: webcam; 
+               facingMode: environment; 
+               debugUIEnabled: false;
+               detectionMode: mono_andmatrix;
+               matrixCodeType: 3x3;
+               sourceWidth: 1280;
+               sourceHeight: 960;
+               displayWidth: 1280;
+               displayHeight: 960;">
+        
+        <!-- Surface Detection Marker -->
+        <a-marker-camera 
+            id="surface-marker" 
+            preset="hiro" 
+            visible="false"
+            emitevents="true"
+            cursor="rayOrigin: mouse">
+            
+            <!-- This will be our surface detection area -->
+            <a-plane 
+                id="surface-plane" 
+                position="0 0 0" 
+                rotation="-90 0 0" 
+                width="10" 
+                height="10" 
+                color="rgba(0,255,0,0.3)" 
+                visible="false">
+            </a-plane>
+        </a-marker-camera>
+        
+        <!-- AR Content Container -->
+        <a-entity id="ar-content"></a-entity>
+        
+        <!-- Camera Entity -->
+        <a-entity camera></a-entity>
+        
+        <!-- Lighting -->
+        <a-light type="ambient" color="#ffffff" intensity="0.6"></a-light>
+        <a-light type="directional" position="0 10 5" color="#ffffff" intensity="0.8"></a-light>
+    </a-scene>
+    
+    <script>
+        // ============================================================================
+        // AR SESSION MANAGEMENT & SURFACE DETECTION
+        // ============================================================================
+        
+        // Global variables for AR session management
+        let arSession = null;
+        let surfaceDetected = false;
+        let placedObjects = [];
+        let selectedObject = null;
+        let isPlacingObject = false;
+        
+        // Surface detection variables
+        let surfaceMarkers = [];
+        let surfaceDetectionActive = false;
+        
+        // Gesture control variables
+        let touchStart = { x: 0, y: 0, time: 0 };
+        let touchEnd = { x: 0, y: 0, time: 0 };
+        let isDragging = false;
+        let lastTouchDistance = 0;
+        let lastTouchAngle = 0;
+        let gestureMode = 'none'; // 'rotate', 'scale', 'move'
+        
+        // ============================================================================
+        // INITIALIZATION FUNCTIONS
+        // ============================================================================
+        
+        // Initialize AR session when page loads
+        window.addEventListener('load', function() {
+            console.log('🚀 AR Surface Detection App Loading...');
+            initializeAR();
+            initializeTouchGestures();
+            updateStatus('🔍 Scanning for surfaces...');
+        });
+        
+        // Initialize AR session and surface detection
+        function initializeAR() {
+            console.log('📱 Initializing AR session...');
+            
+            // Get AR.js scene
+            const scene = document.querySelector('a-scene');
+            
+            // Wait for AR.js to be ready
+            scene.addEventListener('arjs-nft-loaded', function() {
+                console.log('✅ AR.js NFT system loaded');
+            });
+            
+            // Listen for marker detection
+            scene.addEventListener('markerFound', function(event) {
+                console.log('🎯 Marker detected:', event.target);
+                handleMarkerDetection(event);
+            });
+            
+            // Listen for marker loss
+            scene.addEventListener('markerLost', function(event) {
+                console.log('❌ Marker lost:', event.target);
+                handleMarkerLoss(event);
+            });
+            
+            // Start surface detection after a short delay
+            setTimeout(startSurfaceDetection, 2000);
+        }
+        
+        // ============================================================================
+        // SURFACE DETECTION SYSTEM
+        // ============================================================================
+        
+        // Start surface detection using device sensors and camera analysis
+        function startSurfaceDetection() {
+            console.log('🔍 Starting surface detection...');
+            surfaceDetectionActive = true;
+            
+            // Use device orientation to detect horizontal surfaces
+            if (window.DeviceOrientationEvent) {
+                window.addEventListener('deviceorientation', function(event) {
+                    if (surfaceDetectionActive) {
+                        analyzeDeviceOrientation(event);
+                    }
+                });
+            }
+            
+            // Use device motion to detect stable surfaces
+            if (window.DeviceMotionEvent) {
+                window.addEventListener('devicemotion', function(event) {
+                    if (surfaceDetectionActive) {
+                        analyzeDeviceMotion(event);
+                    }
+                });
+            }
+            
+            // Request permissions for iOS
+            if (window.DeviceMotionEvent && 'requestPermission' in DeviceMotionEvent) {
+                DeviceMotionEvent.requestPermission().then(function(permissionState) {
+                    if (permissionState === 'granted') {
+                        console.log('✅ Motion permission granted');
+                    }
+                });
+            }
+            
+            updateStatus('👆 Point camera at a flat surface and tap to place objects');
+        }
+        
+        // Analyze device orientation to detect horizontal surfaces
+        function analyzeDeviceOrientation(event) {
+            const beta = event.beta; // X-axis rotation (front/back tilt)
+            const gamma = event.gamma; // Y-axis rotation (left/right tilt)
+            
+            // Check if device is relatively level (horizontal surface)
+            if (Math.abs(beta) < 15 && Math.abs(gamma) < 15) {
+                if (!surfaceDetected) {
+                    surfaceDetected = true;
+                    console.log('✅ Horizontal surface detected');
+                    updateStatus('✅ Surface detected! Tap to place objects');
+                    showSurfaceFeedback();
+                }
+            } else {
+                if (surfaceDetected) {
+                    surfaceDetected = false;
+                    console.log('❌ Surface lost');
+                    updateStatus('🔍 Scanning for surfaces...');
+                    hideSurfaceFeedback();
+                }
+            }
+        }
+        
+        // Analyze device motion to detect stable surfaces
+        function analyzeDeviceMotion(event) {
+            const acceleration = event.accelerationIncludingGravity;
+            if (!acceleration) return;
+            
+            const x = acceleration.x || 0;
+            const y = acceleration.y || 0;
+            const z = acceleration.z || 0;
+            
+            // Calculate motion magnitude
+            const motionMagnitude = Math.sqrt(x*x + y*y + z*z);
+            
+            // If motion is very low, surface is stable
+            if (motionMagnitude < 0.5 && surfaceDetected) {
+                updateStatus('✅ Stable surface detected - Ready for placement');
+            }
+        }
+        
+        // Show visual feedback for detected surface
+        function showSurfaceFeedback() {
+            // Create visual surface markers
+            createSurfaceMarkers();
+            
+            // Enable tap-to-place functionality
+            enableTapToPlace();
+        }
+        
+        // Hide surface feedback
+        function hideSurfaceFeedback() {
+            // Remove surface markers
+            removeSurfaceMarkers();
+            
+            // Disable tap-to-place
+            disableTapToPlace();
+        }
+        
+        // Create visual surface markers
+        function createSurfaceMarkers() {
+            removeSurfaceMarkers();
+            
+            // Create a grid of surface markers
+            for (let i = 0; i < 9; i++) {
+                const marker = document.createElement('div');
+                marker.className = 'surface-marker';
+                marker.style.left = (20 + (i % 3) * 30) + '%';
+                marker.style.top = (30 + Math.floor(i / 3) * 20) + '%';
+                document.body.appendChild(marker);
+                surfaceMarkers.push(marker);
+            }
+            
+            updateDebugInfo();
+        }
+        
+        // Remove surface markers
+        function removeSurfaceMarkers() {
+            surfaceMarkers.forEach(marker => marker.remove());
+            surfaceMarkers = [];
+            updateDebugInfo();
+        }
+        
+        // ============================================================================
+        // TAP-TO-PLACE SYSTEM
+        // ============================================================================
+        
+        // Enable tap-to-place functionality
+        function enableTapToPlace() {
+            console.log('👆 Enabling tap-to-place...');
+            document.addEventListener('click', handleTapToPlace);
+            document.addEventListener('touchend', handleTapToPlace);
+        }
+        
+        // Disable tap-to-place functionality
+        function disableTapToPlace() {
+            console.log('❌ Disabling tap-to-place...');
+            document.removeEventListener('click', handleTapToPlace);
+            document.removeEventListener('touchend', handleTapToPlace);
+        }
+        
+        // Handle tap-to-place events
+        function handleTapToPlace(event) {
+            if (!surfaceDetected || isPlacingObject) return;
+            
+            event.preventDefault();
+            console.log('👆 Tap detected, placing object...');
+            
+            // Get tap position
+            const tapX = event.clientX || event.touches[0].clientX;
+            const tapY = event.clientY || event.touches[0].clientY;
+            
+            // Convert screen coordinates to world coordinates
+            const worldPosition = screenToWorldPosition(tapX, tapY);
+            
+            // Place cube at tap position
+            placeCube(worldPosition);
+            
+            // Prevent multiple rapid placements
+            isPlacingObject = true;
+            setTimeout(() => { isPlacingObject = false; }, 500);
+        }
+        
+        // Convert screen coordinates to world coordinates
+        function screenToWorldPosition(screenX, screenY) {
+            // Simple conversion - you can make this more sophisticated
+            const normalizedX = (screenX / window.innerWidth - 0.5) * 10;
+            const normalizedZ = (screenY / window.innerHeight - 0.5) * 10;
+            
+            return {
+                x: normalizedX,
+                y: 0, // Place on ground level
+                z: -5 + normalizedZ // Adjust depth based on screen position
+            };
+        }
+        
+        // Place a cube at the specified world position
+        function placeCube(position) {
+            console.log('🎲 Placing cube at:', position);
+            
+            // Create cube entity
+            const cube = document.createElement('a-box');
+            cube.setAttribute('position', `${position.x} ${position.y} ${position.z}`);
+            cube.setAttribute('width', '1');
+            cube.setAttribute('height', '1');
+            cube.setAttribute('depth', '1');
+            cube.setAttribute('color', getRandomColor());
+            cube.setAttribute('material', 'shader: flat; roughness: 0.5; metalness: 0.1');
+            
+            // Add unique ID and make it selectable
+            cube.setAttribute('id', `cube-${Date.now()}`);
+            cube.setAttribute('class', 'placeable-object');
+            cube.setAttribute('data-position', JSON.stringify(position));
+            
+            // Add to AR content container
+            const arContent = document.getElementById('ar-content');
+            arContent.appendChild(cube);
+            
+            // Store reference
+            placedObjects.push({
+                element: cube,
+                position: position,
+                rotation: { x: 0, y: 0, z: 0 },
+                scale: { x: 1, y: 1, z: 1 }
+            });
+            
+            console.log('✅ Cube placed successfully');
+            updateStatus(`🎲 Cube placed! Total objects: ${placedObjects.length}`);
+            updateDebugInfo();
+            
+            // Select the newly placed object
+            selectObject(cube);
+        }
+        
+        // ============================================================================
+        // OBJECT SELECTION & GESTURE CONTROLS
+        // ============================================================================
+        
+        // Select an object for manipulation
+        function selectObject(object) {
+            // Deselect previous object
+            if (selectedObject) {
+                selectedObject.classList.remove('selected-object');
+            }
+            
+            // Select new object
+            selectedObject = object;
+            selectedObject.classList.add('selected-object');
+            
+            console.log('🎯 Object selected:', selectedObject.getAttribute('id'));
+            updateStatus('🎯 Object selected - Use gestures to manipulate');
+        }
+        
+        // Initialize touch gesture controls
+        function initializeTouchGestures() {
+            console.log('👆 Initializing touch gestures...');
+            
+            // Add touch event listeners to the document
+            document.addEventListener('touchstart', handleTouchStart, { passive: false });
+            document.addEventListener('touchmove', handleTouchMove, { passive: false });
+            document.addEventListener('touchend', handleTouchEnd, { passive: false });
+            
+            // Add click listener for object selection
+            document.addEventListener('click', handleObjectClick);
+        }
+        
+        // Handle touch start events
+        function handleTouchStart(event) {
+            if (!selectedObject) return;
+            
+            event.preventDefault();
+            
+            if (event.touches.length === 1) {
+                // Single finger - prepare for rotation
+                touchStart.x = event.touches[0].clientX;
+                touchStart.y = event.touches[0].clientY;
+                touchStart.time = Date.now();
+                isDragging = true;
+                gestureMode = 'rotate';
+                
+                console.log('🔄 Single finger touch - Rotation mode');
+                
+            } else if (event.touches.length === 2) {
+                // Two fingers - prepare for scale or move
+                const touch1 = event.touches[0];
+                const touch2 = event.touches[1];
+                
+                lastTouchDistance = getTouchDistance(touch1, touch2);
+                lastTouchAngle = getTouchAngle(touch1, touch2);
+                
+                // Determine if this is a pinch (scale) or drag (move)
+                const centerX = (touch1.clientX + touch2.clientX) / 2;
+                const centerY = (touch1.clientY + touch2.clientY) / 2;
+                
+                touchStart.x = centerX;
+                touchStart.y = centerY;
+                isDragging = true;
+                
+                // Check if fingers are moving apart/together (scale) vs moving together (move)
+                setTimeout(() => {
+                    if (isDragging) {
+                        const currentDistance = getTouchDistance(touch1, touch2);
+                        const distanceChange = Math.abs(currentDistance - lastTouchDistance);
+                        
+                        if (distanceChange > 10) {
+                            gestureMode = 'scale';
+                            console.log('📏 Two finger touch - Scale mode');
+                        } else {
+                            gestureMode = 'move';
+                            console.log('🚀 Two finger touch - Move mode');
+                        }
+                    }
+                }, 100);
+            }
+        }
+        
+        // Handle touch move events
+        function handleTouchMove(event) {
+            if (!isDragging || !selectedObject) return;
+            
+            event.preventDefault();
+            
+            if (gestureMode === 'rotate' && event.touches.length === 1) {
+                // Rotate object based on finger movement
+                handleRotation(event.touches[0]);
+                
+            } else if (gestureMode === 'scale' && event.touches.length === 2) {
+                // Scale object based on pinch gesture
+                handleScaling(event.touches[0], event.touches[1]);
+                
+            } else if (gestureMode === 'move' && event.touches.length === 2) {
+                // Move object based on two-finger drag
+                handleMovement(event.touches[0], event.touches[1]);
+            }
+        }
+        
+        // Handle touch end events
+        function handleTouchEnd(event) {
+            if (!isDragging) return;
+            
+            isDragging = false;
+            gestureMode = 'none';
+            
+            console.log('👆 Touch gesture ended');
+            
+            // Update object data
+            if (selectedObject) {
+                updateObjectData(selectedObject);
+            }
+        }
+        
+        // Handle object rotation
+        function handleRotation(touch) {
+            const deltaX = (touch.clientX - touchStart.x) * 0.5;
+            const deltaY = (touch.clientY - touchStart.y) * 0.5;
+            
+            // Get current rotation
+            const currentRotation = selectedObject.getAttribute('rotation');
+            
+            // Apply rotation changes
+            const newRotation = {
+                x: currentRotation.x + deltaY,
+                y: currentRotation.y + deltaX,
+                z: currentRotation.z
+            };
+            
+            selectedObject.setAttribute('rotation', newRotation);
+            
+            // Update touch start for continuous rotation
+            touchStart.x = touch.clientX;
+            touchStart.y = touch.clientY;
+        }
+        
+        // Handle object scaling
+        function handleScaling(touch1, touch2) {
+            const currentDistance = getTouchDistance(touch1, touch2);
+            const scaleFactor = currentDistance / lastTouchDistance;
+            
+            // Get current scale
+            const currentScale = selectedObject.getAttribute('scale');
+            
+            // Apply scaling (clamp to reasonable limits)
+            const newScale = {
+                x: Math.max(0.1, Math.min(5, currentScale.x * scaleFactor)),
+                y: Math.max(0.1, Math.min(5, currentScale.y * scaleFactor)),
+                z: Math.max(0.1, Math.min(5, currentScale.z * scaleFactor))
+            };
+            
+            selectedObject.setAttribute('scale', newScale);
+            
+            // Update last distance for continuous scaling
+            lastTouchDistance = currentDistance;
+        }
+        
+        // Handle object movement
+        function handleMovement(touch1, touch2) {
+            const centerX = (touch1.clientX + touch2.clientX) / 2;
+            const centerY = (touch1.clientY + touch2.clientY) / 2;
+            
+            const deltaX = (centerX - touchStart.x) * 0.01;
+            const deltaY = (centerY - touchStart.y) * -0.01;
+            
+            // Get current position
+            const currentPosition = selectedObject.getAttribute('position');
+            
+            // Apply movement
+            const newPosition = {
+                x: currentPosition.x + deltaX,
+                y: currentPosition.y + deltaY,
+                z: currentPosition.z
+            };
+            
+            // Clamp position to reasonable bounds
+            newPosition.x = Math.max(-10, Math.min(10, newPosition.x));
+            newPosition.y = Math.max(-5, Math.min(5, newPosition.y));
+            newPosition.z = Math.max(-15, Math.min(-1, newPosition.z));
+            
+            selectedObject.setAttribute('position', newPosition);
+            
+            // Update touch start for continuous movement
+            touchStart.x = centerX;
+            touchStart.y = centerY;
+        }
+        
+        // ============================================================================
+        // UTILITY FUNCTIONS
+        // ============================================================================
+        
+        // Calculate distance between two touch points
+        function getTouchDistance(touch1, touch2) {
+            const dx = touch1.clientX - touch2.clientX;
+            const dy = touch1.clientY - touch2.clientY;
+            return Math.sqrt(dx * dx + dy * dy);
+        }
+        
+        // Calculate angle between two touch points
+        function getTouchAngle(touch1, touch2) {
+            return Math.atan2(touch2.clientY - touch1.clientY, touch2.clientX - touch1.clientX);
+        }
+        
+        // Generate random color for cubes
+        function getRandomColor() {
+            const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD', '#98D8C8'];
+            return colors[Math.floor(Math.random() * colors.length)];
+        }
+        
+        // Update status display
+        function updateStatus(message) {
+            const statusText = document.getElementById('status-text');
+            statusText.textContent = message;
+            console.log('📱 Status:', message);
+        }
+        
+        // Update debug information
+        function updateDebugInfo() {
+            document.getElementById('surface-count').textContent = surfaceMarkers.length;
+            document.getElementById('object-count').textContent = placedObjects.length;
+        }
+        
+        // Handle object clicks for selection
+        function handleObjectClick(event) {
+            // Check if click is on a placeable object
+            const clickedElement = event.target;
+            if (clickedElement.classList.contains('placeable-object')) {
+                selectObject(clickedElement);
+            }
+        }
+        
+        // Update object data in storage
+        function updateObjectData(object) {
+            const objectId = object.getAttribute('id');
+            const storedObject = placedObjects.find(obj => obj.element === object);
+            
+            if (storedObject) {
+                storedObject.position = object.getAttribute('position');
+                storedObject.rotation = object.getAttribute('rotation');
+                storedObject.scale = object.getAttribute('scale');
+                console.log('💾 Object data updated:', storedObject);
+            }
+        }
+        
+        // ============================================================================
+        // CONTROL FUNCTIONS
+        // ============================================================================
+        
+        // Toggle debug information
+        function toggleDebug() {
+            const debugInfo = document.getElementById('debug-info');
+            debugInfo.style.display = debugInfo.style.display === 'none' ? 'block' : 'none';
+        }
+        
+        // Clear all placed objects
+        function clearAllObjects() {
+            console.log('🗑️ Clearing all objects...');
+            
+            // Remove all objects from scene
+            placedObjects.forEach(obj => {
+                if (obj.element.parentNode) {
+                    obj.element.parentNode.removeChild(obj.element);
+                }
+            });
+            
+            // Clear arrays and references
+            placedObjects = [];
+            selectedObject = null;
+            
+            // Remove selection highlighting
+            document.querySelectorAll('.selected-object').forEach(el => {
+                el.classList.remove('selected-object');
+            });
+            
+            updateStatus('🗑️ All objects cleared');
+            updateDebugInfo();
+        }
+        
+        // ============================================================================
+        // MARKER DETECTION HANDLERS (for compatibility)
+        // ============================================================================
+        
+        // Handle marker detection (for compatibility with AR.js)
+        function handleMarkerDetection(event) {
+            console.log('🎯 Marker detected:', event.target);
+            // You can add marker-specific logic here if needed
+        }
+        
+        // Handle marker loss (for compatibility with AR.js)
+        function handleMarkerLoss(event) {
+            console.log('❌ Marker lost:', event.target);
+            // You can add marker-specific logic here if needed
+        }
+        
+        // ============================================================================
+        // ERROR HANDLING & FALLBACKS
+        // ============================================================================
+        
+        // Handle AR.js errors
+        window.addEventListener('arjs-nft-loaded-error', function(event) {
+            console.error('❌ AR.js NFT loading error:', event);
+            updateStatus('❌ AR system error - Please refresh page');
+        });
+        
+        // Handle general errors
+        window.addEventListener('error', function(event) {
+            console.error('❌ General error:', event.error);
+            updateStatus('❌ System error - Please refresh page');
+        });
+        
+        console.log('🚀 AR Surface Detection App Initialized Successfully!');
+    </script>
+</body>
+</html>
