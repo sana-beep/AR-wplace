@@ -109,10 +109,18 @@
         border-radius: 50%;
         margin: 0 2px;
       }
-      .sensor-active { background: #34C759; }
-      .sensor-inactive { background: #FF3B30; }
-      .sensor-unknown { background: #FF9500; }
-      #camera-feed {
+             .sensor-active { background: #34C759; }
+       .sensor-inactive { background: #FF3B30; }
+       .sensor-unknown { background: #FF9500; }
+              .sensor-triggered { background: #FFD700; animation: pulse 1s infinite; }
+       
+       @keyframes pulse {
+         0% { transform: scale(1); }
+         50% { transform: scale(1.2); }
+         100% { transform: scale(1); }
+       }
+       
+       #camera-feed {
         position: fixed;
         top: 0;
         left: 0;
@@ -163,7 +171,8 @@
       <button class="ios-button" onclick="refreshLocation()">🔄 Refresh</button>
       <button class="ios-button" onclick="testCameraAccess()">📱 Test Camera</button>
       <button class="ios-button" onclick="toggleSensorDisplay()">📊 Toggle Sensors</button>
-      <button class="ios-button" onclick="toggleCameraFeed()">👁️ Show Camera</button>
+             <button class="ios-button" onclick="toggleCameraFeed()">👁️ Show Camera</button>
+       <button class="ios-button" onclick="testCompassTrigger()">🧭 Test Compass Trigger</button>
     </div>
 
     <div id="camera-status">
@@ -284,17 +293,27 @@
           });
         }
 
-        // Compass
-        if (window.DeviceOrientationEvent) {
-          window.addEventListener('deviceorientation', function(event) {
-            if (event.webkitCompassHeading !== undefined) {
-              sensorData.compass.heading = event.webkitCompassHeading;
-              sensorData.compass.active = true;
-              updateSensorDisplay('compass');
-              updateSensorDot('compass-dot', true);
-            }
-          });
-        }
+                 // Compass
+         if (window.DeviceOrientationEvent) {
+           window.addEventListener('deviceorientation', function(event) {
+             if (event.webkitCompassHeading !== undefined) {
+               sensorData.compass.heading = event.webkitCompassHeading;
+               sensorData.compass.active = true;
+               updateSensorDisplay('compass');
+               
+               // Update compass dot with special trigger indication
+               const heading = event.webkitCompassHeading;
+               if (heading >= 100 && heading <= 150) {
+                 updateSensorDot('compass-dot', 'triggered'); // Special state for triggered
+               } else {
+                 updateSensorDot('compass-dot', true); // Normal active state
+               }
+               
+               // Check for special compass-triggered content
+               checkCompassForSpecialContent();
+             }
+           });
+         }
 
         // Device Orientation
         if (window.DeviceOrientationEvent) {
@@ -390,49 +409,58 @@
         }
       }
 
-      // Update sensor display
-      function updateSensorDisplay(sensorType) {
-        const data = sensorData[sensorType];
-        if (!data) return;
+             // Update sensor display
+       function updateSensorDisplay(sensorType) {
+         const data = sensorData[sensorType];
+         if (!data) return;
+ 
+         let displayText = '';
+         switch(sensorType) {
+           case 'accelerometer':
+             displayText = `X:${data.x.toFixed(2)} Y:${data.y.toFixed(2)} Z:${data.z.toFixed(2)}`;
+             break;
+           case 'gyroscope':
+             displayText = `X:${data.x.toFixed(2)} Y:${data.y.toFixed(2)} Z:${data.z.toFixed(2)}`;
+             break;
+           case 'compass':
+             const heading = data.heading;
+             let compassStatus = '';
+             if (heading >= 100 && heading <= 150) {
+               compassStatus = ' 🎯 TRIGGERED!';
+             }
+             displayText = `${heading.toFixed(1)}°${compassStatus}`;
+             break;
+           case 'orientation':
+             displayText = `α:${data.alpha.toFixed(1)} β:${data.beta.toFixed(1)} γ:${data.gamma.toFixed(1)}`;
+             break;
+           case 'motion':
+             displayText = `X:${data.x.toFixed(2)} Y:${data.y.toFixed(2)} Z:${data.z.toFixed(2)}`;
+             break;
+           case 'light':
+             displayText = `${data.level.toFixed(1)} lux`;
+             break;
+           case 'proximity':
+             displayText = `${data.distance.toFixed(2)} cm`;
+             break;
+         }
+ 
+         const element = document.getElementById(sensorType + '-data');
+         if (element) {
+           element.textContent = `${sensorType.charAt(0).toUpperCase() + sensorType.slice(1)}: ${displayText}`;
+         }
+       }
 
-        let displayText = '';
-        switch(sensorType) {
-          case 'accelerometer':
-            displayText = `X:${data.x.toFixed(2)} Y:${data.y.toFixed(2)} Z:${data.z.toFixed(2)}`;
-            break;
-          case 'gyroscope':
-            displayText = `X:${data.x.toFixed(2)} Y:${data.y.toFixed(2)} Z:${data.z.toFixed(2)}`;
-            break;
-          case 'compass':
-            displayText = `${data.heading.toFixed(1)}°`;
-            break;
-          case 'orientation':
-            displayText = `α:${data.alpha.toFixed(1)} β:${data.beta.toFixed(1)} γ:${data.gamma.toFixed(1)}`;
-            break;
-          case 'motion':
-            displayText = `X:${data.x.toFixed(2)} Y:${data.y.toFixed(2)} Z:${data.z.toFixed(2)}`;
-            break;
-          case 'light':
-            displayText = `${data.level.toFixed(1)} lux`;
-            break;
-          case 'proximity':
-            displayText = `${data.distance.toFixed(2)} cm`;
-            break;
-        }
-
-        const element = document.getElementById(sensorType + '-data');
-        if (element) {
-          element.textContent = `${sensorType.charAt(0).toUpperCase() + sensorType.slice(1)}: ${displayText}`;
-        }
-      }
-
-      // Update sensor indicator dots
-      function updateSensorDot(dotId, active) {
-        const dot = document.getElementById(dotId);
-        if (dot) {
-          dot.className = `sensor-dot ${active ? 'sensor-active' : 'sensor-inactive'}`;
-        }
-      }
+             // Update sensor indicator dots
+       function updateSensorDot(dotId, active) {
+         const dot = document.getElementById(dotId);
+         if (dot) {
+           if (active === 'triggered') {
+             dot.className = 'sensor-dot sensor-triggered';
+           } else {
+             dot.className = `sensor-dot ${active ? 'sensor-active' : 'sensor-inactive'}`;
+           }
+         }
+       }
 
       // Handle touch gestures
       function handleGesture() {
@@ -626,10 +654,83 @@
         
         arContent.appendChild(background);
         
-        // Update status
-        document.getElementById('data-status').textContent = '✅ AR Content Ready!';
-        document.getElementById('data-status').className = 'success';
-      }
+                 // Update status
+         document.getElementById('data-status').textContent = '✅ AR Content Ready!';
+         document.getElementById('data-status').className = 'success';
+         
+         // Check compass heading for special AR content
+         checkCompassForSpecialContent();
+       }
+       
+       // Check compass heading and show special AR content
+       function checkCompassForSpecialContent() {
+         if (sensorData.compass.active) {
+           const heading = sensorData.compass.heading;
+           
+           // Check if heading is between 100-150 degrees
+           if (heading >= 100 && heading <= 150) {
+             showCompassTriggeredImage();
+           } else {
+             hideCompassTriggeredImage();
+           }
+         }
+       }
+       
+       // Show the compass-triggered image
+       function showCompassTriggeredImage() {
+         let compassImage = document.getElementById('compass-triggered-image');
+         
+         // Create image if it doesn't exist
+         if (!compassImage) {
+           compassImage = document.createElement('a-image');
+           compassImage.setAttribute('id', 'compass-triggered-image');
+           compassImage.setAttribute('src', 'testimg.jpg');
+           compassImage.setAttribute('position', '0 3 -5');
+           compassImage.setAttribute('width', '2');
+           compassImage.setAttribute('height', '2');
+           compassImage.setAttribute('rotation', '0 0 0');
+           
+           // Add to AR scene
+           const arContent = document.getElementById('ar-content');
+           arContent.appendChild(compassImage);
+           
+           // Update status
+           document.getElementById('data-status').textContent = '🎯 Compass Image Active (100-150°)';
+           document.getElementById('data-status').className = 'success';
+         }
+       }
+       
+       // Hide the compass-triggered image
+       function hideCompassTriggeredImage() {
+         const compassImage = document.getElementById('compass-triggered-image');
+         if (compassImage) {
+           compassImage.remove();
+           
+           // Update status back to normal
+           document.getElementById('data-status').textContent = '✅ AR Content Ready!';
+           document.getElementById('data-status').className = 'success';
+         }
+       }
+       
+       // Test compass trigger manually
+       function testCompassTrigger() {
+         const statusDiv = document.getElementById('camera-status');
+         const messageDiv = document.getElementById('camera-message');
+         
+         statusDiv.style.display = 'block';
+         
+         if (sensorData.compass.active) {
+           const heading = sensorData.compass.heading;
+           if (heading >= 100 && heading <= 150) {
+             messageDiv.textContent = `🎯 Compass Triggered! (${heading.toFixed(1)}°) - Image should be visible`;
+             showCompassTriggeredImage();
+           } else {
+             messageDiv.textContent = `🧭 Compass: ${heading.toFixed(1)}° - Not in trigger range (100-150°)`;
+           }
+         } else {
+           messageDiv.textContent = '❌ Compass not active - rotate device to activate';
+         }
+       }
 
               // Initialize the app when the page loads
         window.addEventListener('load', function() {
