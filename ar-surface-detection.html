@@ -121,10 +121,51 @@
             cursor: pointer;
         }
         
-        .control-btn:active {
-            background: #0056CC;
-            transform: scale(0.95);
-        }
+                 .control-btn:active {
+             background: #0056CC;
+             transform: scale(0.95);
+         }
+         
+         /* Menu Styling */
+         #controls {
+             position: fixed;
+             top: env(safe-area-inset-top, 80px);
+             right: 20px;
+             z-index: 1000;
+             background: rgba(0, 0, 0, 0.9);
+             padding: 20px;
+             border-radius: 15px;
+             backdrop-filter: blur(15px);
+             border: 2px solid #007AFF;
+             max-width: 280px;
+             max-height: 80vh;
+             overflow-y: auto;
+         }
+         
+         .menu-section {
+             margin-bottom: 20px;
+             padding-bottom: 15px;
+             border-bottom: 1px solid #333;
+         }
+         
+         .menu-section:last-child {
+             border-bottom: none;
+             margin-bottom: 0;
+         }
+         
+         .menu-section h3 {
+             margin: 0 0 10px 0;
+             font-size: 14px;
+             color: #007AFF;
+             text-align: center;
+         }
+         
+         #menu-toggle {
+             font-size: 14px;
+             padding: 10px 15px;
+             border-radius: 25px;
+             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+         }
     </style>
 </head>
 <body>
@@ -133,21 +174,40 @@
         <p id="status-text">🔍 Detecting surfaces...</p>
     </div>
     
-    <!-- Instructions Panel -->
-    <div id="instructions">
-        <div class="instruction-text">👆 Tap to place cube</div>
-        <div class="instruction-text">🔄 One finger: Rotate</div>
-        <div class="instruction-text">📏 Two finger: Scale</div>
-        <div class="instruction-text">🚀 Two finger: Move</div>
-    </div>
+         <!-- Instructions Panel -->
+     <div id="instructions">
+         <div class="instruction-text">📱 Tap Menu button to open controls</div>
+         <div class="instruction-text">🎲 Use Add Cube button to place objects</div>
+         <div class="instruction-text">🔄 One finger: Rotate selected object</div>
+         <div class="instruction-text">📏 Two finger: Scale selected object</div>
+         <div class="instruction-text">🚀 Two finger: Move selected object</div>
+     </div>
     
-    <!-- Control Buttons -->
-    <div id="controls">
-        <button class="control-btn" onclick="toggleDebug()">🐛 Debug</button>
-        <button class="control-btn" onclick="clearAllObjects()">🗑️ Clear</button>
-        <button class="control-btn" onclick="enableSurfaceDetection()">🔍 Enable Surface</button>
-        <button class="control-btn" onclick="testObjectPlacement()">🧪 Test Object</button>
-    </div>
+         <!-- Menu Toggle Button -->
+     <button id="menu-toggle" class="control-btn" onclick="toggleMenu()" style="position: fixed; top: env(safe-area-inset-top, 20px); right: 20px; z-index: 1001; background: #FF6B6B;">
+         📱 Menu
+     </button>
+     
+     <!-- Control Menu -->
+     <div id="controls" style="display: none;">
+         <div class="menu-section">
+             <h3>🎯 Object Controls</h3>
+             <button class="control-btn" onclick="addNewCube()">🎲 Add Cube</button>
+             <button class="control-btn" onclick="clearAllObjects()">🗑️ Clear All</button>
+         </div>
+         
+         <div class="menu-section">
+             <h3>🔍 Surface Detection</h3>
+             <button class="control-btn" onclick="enableSurfaceDetection()">✅ Enable Surface</button>
+             <button class="control-btn" onclick="toggleSurfaceMarkers()">🟢 Toggle Dots</button>
+         </div>
+         
+         <div class="menu-section">
+             <h3>🧪 Testing</h3>
+             <button class="control-btn" onclick="testObjectPlacement()">🧪 Test Object</button>
+             <button class="control-btn" onclick="toggleDebug()">🐛 Debug Info</button>
+         </div>
+     </div>
     
     <!-- Debug Information -->
     <div id="debug-info">
@@ -228,21 +288,24 @@
         // INITIALIZATION FUNCTIONS
         // ============================================================================
         
-        // Initialize AR session when page loads
-        window.addEventListener('load', function() {
-            console.log('🚀 AR Surface Detection App Loading...');
-            initializeAR();
-            initializeTouchGestures();
-            updateStatus('🔍 Loading AR session...');
-            
-            // Add manual surface detection button functionality
-            document.addEventListener('click', function(event) {
-                if (event.target.classList.contains('control-btn') && 
-                    event.target.textContent.includes('Enable Surface')) {
-                    enableSurfaceDetection();
-                }
-            });
-        });
+                 // Initialize AR session when page loads
+         window.addEventListener('load', function() {
+             console.log('🚀 AR Surface Detection App Loading...');
+             initializeAR();
+             initializeTouchGestures();
+             updateStatus('🔍 Loading AR session...');
+             
+             // Add manual surface detection button functionality
+             document.addEventListener('click', function(event) {
+                 if (event.target.classList.contains('control-btn') && 
+                     event.target.textContent.includes('Enable Surface')) {
+                     enableSurfaceDetection();
+                 }
+             });
+             
+             // Initialize menu state
+             document.getElementById('controls').style.display = 'none';
+         });
         
         // Initialize AR session and surface detection
         function initializeAR() {
@@ -362,14 +425,15 @@
             }
         }
         
-        // Show visual feedback for detected surface
-        function showSurfaceFeedback() {
-            // Create visual surface markers
-            createSurfaceMarkers();
-            
-            // Enable tap-to-place functionality
-            enableTapToPlace();
-        }
+                 // Show visual feedback for detected surface
+         function showSurfaceFeedback() {
+             // Create visual surface markers
+             createSurfaceMarkers();
+             
+             // Don't enable automatic tap-to-place anymore
+             // Users must use the Add Cube button
+             console.log('✅ Surface detection ready - Use Add Cube button to place objects');
+         }
         
         // Hide surface feedback
         function hideSurfaceFeedback() {
@@ -408,52 +472,37 @@
         // TAP-TO-PLACE SYSTEM
         // ============================================================================
         
-        // Enable tap-to-place functionality
+        // Enable tap-to-place functionality (now only for object selection)
         function enableTapToPlace() {
-            console.log('👆 Enabling tap-to-place...');
-            document.addEventListener('click', handleTapToPlace);
-            document.addEventListener('touchend', handleTapToPlace);
+            console.log('👆 Enabling object selection...');
+            // Only enable object selection, not automatic placement
         }
         
         // Disable tap-to-place functionality
         function disableTapToPlace() {
-            console.log('❌ Disabling tap-to-place...');
-            document.removeEventListener('click', handleTapToPlace);
-            document.removeEventListener('touchend', handleTapToPlace);
+            console.log('❌ Disabling object selection...');
         }
         
-        // Handle tap-to-place events
+        // Handle tap-to-place events (now only for object selection)
         function handleTapToPlace(event) {
             try {
-                if (!surfaceDetected || isPlacingObject) return;
+                // Only handle object selection, not automatic placement
+                console.log('👆 Tap detected - checking for object selection...');
                 
-                console.log('👆 Tap detected, placing object...');
-                
-                // Get tap position
-                let tapX, tapY;
-                if (event.touches && event.touches.length > 0) {
-                    tapX = event.touches[0].clientX;
-                    tapY = event.touches[0].clientY;
-                } else {
-                    tapX = event.clientX;
-                    tapY = event.clientY;
+                // Check if tap is on a control button or menu
+                if (event.target.closest('#controls') || event.target.closest('#menu-toggle')) {
+                    return; // Don't process taps on UI elements
                 }
                 
-                console.log('Tap coordinates:', tapX, tapY);
-                
-                // Convert screen coordinates to world coordinates
-                const worldPosition = screenToWorldPosition(tapX, tapY);
-                
-                // Place cube at tap position
-                placeCube(worldPosition);
-                
-                // Prevent multiple rapid placements
-                isPlacingObject = true;
-                setTimeout(() => { isPlacingObject = false; }, 500);
+                // Only select objects if surface detection is enabled
+                if (surfaceDetected) {
+                    // This will be handled by the existing object click handler
+                    console.log('👆 Tap processed for object selection');
+                }
                 
             } catch (error) {
                 console.error('❌ Error in handleTapToPlace:', error);
-                updateStatus('❌ Error placing object - Check console');
+                updateStatus('❌ Error processing tap - Check console');
             }
         }
         
@@ -807,6 +856,50 @@
             debugInfo.style.display = debugInfo.style.display === 'none' ? 'block' : 'none';
         }
         
+        // Toggle surface markers visibility
+        function toggleSurfaceMarkers() {
+            const surfaceMarkers = document.querySelectorAll('.surface-marker');
+            if (surfaceMarkers.length > 0) {
+                // Check if markers are visible
+                const firstMarker = surfaceMarkers[0];
+                const isVisible = firstMarker.style.display !== 'none';
+                
+                if (isVisible) {
+                    // Hide markers
+                    surfaceMarkers.forEach(marker => {
+                        marker.style.display = 'none';
+                    });
+                    updateStatus('🔴 Surface markers hidden');
+                } else {
+                    // Show markers
+                    surfaceMarkers.forEach(marker => {
+                        marker.style.display = 'block';
+                    });
+                    updateStatus('🟢 Surface markers visible');
+                }
+            } else {
+                updateStatus('⚠️ No surface markers to toggle');
+                // Create markers if they don't exist
+                if (surfaceDetected) {
+                    createSurfaceMarkers();
+                }
+            }
+        }
+        
+        // Toggle menu visibility
+        function toggleMenu() {
+            const controls = document.getElementById('controls');
+            const isVisible = controls.style.display !== 'none';
+            
+            if (isVisible) {
+                controls.style.display = 'none';
+                updateStatus('📱 Menu hidden');
+            } else {
+                controls.style.display = 'block';
+                updateStatus('📱 Menu visible');
+            }
+        }
+        
         // Clear all placed objects
         function clearAllObjects() {
             console.log('🗑️ Clearing all objects...');
@@ -880,6 +973,56 @@
             } catch (error) {
                 console.error('❌ Error in testObjectPlacement:', error);
                 updateStatus(`❌ Failed to place test cube: ${error.message}`);
+            }
+        }
+        
+        // Add new cube at center of screen
+        function addNewCube() {
+            try {
+                console.log('🎲 Adding new cube...');
+                
+                if (!surfaceDetected) {
+                    updateStatus('❌ Surface detection not enabled - Enable it first');
+                    return;
+                }
+                
+                // Create cube entity
+                const cube = document.createElement('a-box');
+                cube.setAttribute('position', '0 0 -3');
+                cube.setAttribute('width', '1');
+                cube.setAttribute('height', '1');
+                cube.setAttribute('depth', '1');
+                cube.setAttribute('color', getRandomColor());
+                cube.setAttribute('material', 'shader: flat; roughness: 0.5; metalness: 0.1');
+                cube.setAttribute('id', `cube-${Date.now()}`);
+                cube.setAttribute('class', 'placeable-object');
+                
+                // Add to AR content container
+                const arContent = document.getElementById('ar-content');
+                if (!arContent) {
+                    throw new Error('AR content container not found');
+                }
+                
+                arContent.appendChild(cube);
+                
+                // Store reference
+                placedObjects.push({
+                    element: cube,
+                    position: { x: 0, y: 0, z: -3 },
+                    rotation: { x: 0, y: 0, z: 0 },
+                    scale: { x: 1, y: 1, z: 1 }
+                });
+                
+                console.log('✅ New cube added successfully');
+                updateStatus(`🎲 New cube added! Total objects: ${placedObjects.length}`);
+                updateDebugInfo();
+                
+                // Select the newly placed object
+                selectObject(cube);
+                
+            } catch (error) {
+                console.error('❌ Error adding new cube:', error);
+                updateStatus(`❌ Failed to add cube: ${error.message}`);
             }
         }
         
