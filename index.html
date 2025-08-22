@@ -171,7 +171,7 @@
       <button class="ios-button" onclick="hideCameraStatus()" style="margin-top: 15px;">OK</button>
     </div>
 
-    <a-scene embedded arjs="sourceType: webcam; sourceWidth: 1280; sourceHeight: 720; displayWidth: 1280; displayHeight: 720; facingMode: user; debugUIEnabled: false;">
+    <a-scene embedded arjs="sourceType: webcam; sourceWidth: 1280; sourceHeight: 720; displayWidth: 1280; displayHeight: 720; facingMode: environment; debugUIEnabled: false;">
 
       <!-- AR content will be dynamically added here -->
       <a-entity id="ar-content"></a-entity>
@@ -183,7 +183,7 @@
     <script>
       let currentLocation = null;
       let wplaceData = null;
-      let isFrontCamera = true;
+      let isFrontCamera = false;
       let sensorsVisible = true;
       let cameraFeedVisible = false;
       let sensorData = {
@@ -432,22 +432,22 @@
         }
       }
 
-      // Test camera access (similar to camera-test.html)
-      function testCameraAccess() {
-        const statusDiv = document.getElementById('camera-status');
-        const messageDiv = document.getElementById('camera-message');
-        
-        statusDiv.style.display = 'block';
-        messageDiv.textContent = 'Testing camera access...';
-        
-        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-          navigator.mediaDevices.getUserMedia({ 
-            video: { 
-              facingMode: 'user',
-              width: { ideal: 1280 },
-              height: { ideal: 720 }
-            } 
-          })
+              // Test camera access (similar to camera-test.html)
+        function testCameraAccess() {
+          const statusDiv = document.getElementById('camera-status');
+          const messageDiv = document.getElementById('camera-message');
+          
+          statusDiv.style.display = 'block';
+          messageDiv.textContent = 'Testing camera access...';
+          
+          if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+            navigator.mediaDevices.getUserMedia({ 
+              video: { 
+                facingMode: 'environment',
+                width: { ideal: 1280 },
+                height: { ideal: 720 }
+              } 
+            })
           .then(function(stream) {
             messageDiv.textContent = '✅ Camera working! AR should work now.';
             
@@ -520,19 +520,25 @@
         }
       }
 
-      // Switch between front and back camera
-      function switchCamera() {
-        isFrontCamera = !isFrontCamera;
-        const facingMode = isFrontCamera ? 'user' : 'environment';
-        
-        // Show which camera is active
-        const status = document.getElementById('data-status');
-        status.textContent = isFrontCamera ? '📱 Front Camera' : '📷 Back Camera';
-        status.className = 'success';
-        
-        // Reload the AR scene with new camera
-        location.reload();
-      }
+              // Switch between front and back camera
+        function switchCamera() {
+          isFrontCamera = !isFrontCamera;
+          const facingMode = isFrontCamera ? 'user' : 'environment';
+          
+          // Show which camera is active
+          const status = document.getElementById('data-status');
+          status.textContent = isFrontCamera ? '📱 Front Camera' : '📷 Back Camera';
+          status.className = 'success';
+          
+          // Update AR.js facing mode
+          const scene = document.querySelector('a-scene');
+          const arjs = scene.getAttribute('arjs');
+          arjs.facingMode = facingMode;
+          scene.setAttribute('arjs', arjs);
+          
+          // Reload the AR scene with new camera
+          location.reload();
+        }
 
       // Refresh location manually
       function refreshLocation() {
@@ -597,33 +603,37 @@
         document.getElementById('data-status').className = 'success';
       }
 
-      // Initialize the app when the page loads
-      window.addEventListener('load', function() {
-        console.log('AR App loaded successfully!');
-        
-        // iOS-specific initialization
-        if (/iPad|iPhone|iPod/.test(navigator.userAgent)) {
-          console.log('iOS device detected - optimizing for iOS');
-        }
-        
-        // Initialize all sensors
-        initializeSensors();
-        
-        // Get location first
-        getLocation();
-        
-        // Test camera access after a short delay
-        setTimeout(testCameraAccess, 1000);
-        
-        // Update sensor data display periodically
-        setInterval(function() {
-          Object.keys(sensorData).forEach(sensorType => {
-            if (sensorData[sensorType].active) {
-              updateSensorDisplay(sensorType);
-            }
-          });
-        }, 100);
-      });
+              // Initialize the app when the page loads
+        window.addEventListener('load', function() {
+          console.log('AR App loaded successfully!');
+          
+          // iOS-specific initialization
+          if (/iPad|iPhone|iPod/.test(navigator.userAgent)) {
+            console.log('iOS device detected - optimizing for iOS');
+          }
+          
+          // Initialize all sensors
+          initializeSensors();
+          
+          // Get location first
+          getLocation();
+          
+          // Test camera access after a short delay
+          setTimeout(testCameraAccess, 1000);
+          
+          // Update status to show back camera is active
+          document.getElementById('data-status').textContent = '📷 Back Camera Active';
+          document.getElementById('data-status').className = 'success';
+          
+          // Update sensor data display periodically
+          setInterval(function() {
+            Object.keys(sensorData).forEach(sensorType => {
+              if (sensorData[sensorType].active) {
+                updateSensorDisplay(sensorType);
+              }
+            });
+          }, 100);
+        });
 
       // Handle iOS-specific events
       document.addEventListener('touchstart', function(e) {
