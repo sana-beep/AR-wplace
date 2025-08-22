@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Sensor 3D Test - Simple AR</title>
+    
+    <!-- A-Frame and AR.js libraries -->
+    <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
+    
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #000;
+            color: white;
+        }
+        
+        #info-panel {
+            position: fixed;
+            top: env(safe-area-inset-top, 20px);
+            left: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border-radius: 15px;
+            z-index: 1000;
+            max-width: 300px;
+            backdrop-filter: blur(10px);
+        }
+        
+        .sensor-data {
+            margin: 5px 0;
+            font-size: 12px;
+        }
+        
+        .triggered {
+            color: #FFD700;
+            font-weight: bold;
+        }
+        
+        #controls {
+            position: fixed;
+            bottom: env(safe-area-inset-bottom, 20px);
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1000;
+            text-align: center;
+        }
+        
+        .test-button {
+            background: #007AFF;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 25px;
+            font-size: 16px;
+            margin: 5px;
+            cursor: pointer;
+        }
+        
+        .test-button:active {
+            background: #0056CC;
+            transform: scale(0.95);
+        }
+    </style>
+</head>
+<body>
+    <div id="info-panel">
+        <h3>🧪 Sensor 3D Test</h3>
+        <div class="sensor-data">
+            <div>🧭 Compass: <span id="compass-value">--</span></div>
+            <div>📱 Accelerometer: <span id="accel-value">--</span></div>
+            <div>🎯 Status: <span id="status">Waiting for sensors...</span></div>
+        </div>
+        <div style="margin-top: 15px; font-size: 11px; opacity: 0.8;">
+            <strong>Test Conditions:</strong><br>
+            • Compass: 100°-150°<br>
+            • Accelerometer Y > 5<br>
+            • Both must be true for 3D object
+        </div>
+    </div>
+    
+    <div id="controls">
+        <button class="test-button" onclick="test3DObject()">🔧 Test 3D Object</button>
+        <button class="test-button" onclick="clear3DObjects()">🗑️ Clear Objects</button>
+    </div>
+    
+    <!-- AR Scene -->
+    <a-scene embedded arjs="sourceType: webcam; facingMode: environment; debugUIEnabled: false;">
+        <!-- AR content container -->
+        <a-entity id="ar-content"></a-entity>
+        
+        <!-- Camera entity -->
+        <a-entity camera></a-entity>
+    </a-scene>
+    
+    <script>
+        let sensorData = {
+            compass: { heading: 0, active: false },
+            accelerometer: { x: 0, y: 0, z: 0, active: false }
+        };
+        
+        let testConditions = {
+            compass: { min: 100, max: 150 },
+            accelerometer: { yThreshold: 5 }
+        };
+        
+        // Initialize sensors
+        function initializeSensors() {
+            console.log('🧪 Initializing sensors...');
+            
+            // Compass
+            if (window.DeviceOrientationEvent) {
+                window.addEventListener('deviceorientation', function(event) {
+                    if (event.webkitCompassHeading !== undefined) {
+                        sensorData.compass.heading = event.webkitCompassHeading;
+                        sensorData.compass.active = true;
+                        updateDisplay();
+                        checkConditions();
+                    }
+                });
+            }
+            
+            // Accelerometer
+            if (window.DeviceMotionEvent) {
+                window.addEventListener('devicemotion', function(event) {
+                    sensorData.accelerometer.x = event.accelerationIncludingGravity.x || 0;
+                    sensorData.accelerometer.y = event.accelerationIncludingGravity.y || 0;
+                    sensorData.accelerometer.z = event.accelerationIncludingGravity.z || 0;
+                    sensorData.accelerometer.active = true;
+                    updateDisplay();
+                    checkConditions();
+                });
+            }
+        }
+        
+        // Update display
+        function updateDisplay() {
+            document.getElementById('compass-value').textContent = 
+                sensorData.compass.active ? `${sensorData.compass.heading.toFixed(1)}°` : '--';
+            
+            document.getElementById('accel-value').textContent = 
+                sensorData.accelerometer.active ? 
+                `X:${sensorData.accelerometer.x.toFixed(1)} Y:${sensorData.accelerometer.y.toFixed(1)} Z:${sensorData.accelerometer.z.toFixed(1)}` : '--';
+        }
+        
+        // Check if conditions are met
+        function checkConditions() {
+            const compassOk = sensorData.compass.active && 
+                sensorData.compass.heading >= testConditions.compass.min && 
+                sensorData.compass.heading <= testConditions.compass.max;
+            
+            const accelOk = sensorData.accelerometer.active && 
+                Math.abs(sensorData.accelerometer.y) > testConditions.accelerometer.yThreshold;
+            
+            const statusElement = document.getElementById('status');
+            
+            if (compassOk && accelOk) {
+                statusElement.textContent = '🎯 CONDITIONS MET! Creating 3D object...';
+                statusElement.className = 'triggered';
+                create3DObject();
+            } else {
+                statusElement.textContent = '⏳ Waiting for conditions...';
+                statusElement.className = '';
+                
+                // Show what's missing
+                let missing = [];
+                if (!compassOk) missing.push('Compass not in range');
+                if (!accelOk) missing.push('Accelerometer Y not > 5');
+                if (missing.length > 0) {
+                    statusElement.textContent += ` (${missing.join(', ')})`;
+                }
+            }
+        }
+        
+        // Create 3D object when conditions are met
+        function create3DObject() {
+            const arContent = document.getElementById('ar-content');
+            
+            // Clear existing objects
+            arContent.innerHTML = '';
+            
+            // Create a bright red rotating cube
+            const cube = document.createElement('a-box');
+            cube.setAttribute('position', '0 0 -3');
+            cube.setAttribute('width', '1.5');
+            cube.setAttribute('height', '1.5');
+            cube.setAttribute('depth', '1.5');
+            cube.setAttribute('color', '#FF0000');
+            cube.setAttribute('material', 'shader: flat; emissive: #FF0000; emissiveIntensity: 0.8');
+            cube.setAttribute('animation', 'property: rotation; to: 0 360 0; dur: 2000; loop: true');
+            
+            // Create a glowing sphere above the cube
+            const sphere = document.createElement('a-sphere');
+            sphere.setAttribute('position', '0 1.5 -3');
+            sphere.setAttribute('radius', '0.3');
+            sphere.setAttribute('color', '#FFD700');
+            sphere.setAttribute('material', 'shader: flat; emissive: #FFD700; emissiveIntensity: 1');
+            sphere.setAttribute('animation', 'property: scale; to: 2 2 2; dur: 1000; loop: true; dir: alternate');
+            
+            // Add text label
+            const text = document.createElement('a-text');
+            text.setAttribute('value', '🎯 SENSOR TRIGGERED!');
+            text.setAttribute('position', '0 2.5 -3');
+            text.setAttribute('align', 'center');
+            text.setAttribute('width', '4');
+            text.setAttribute('color', '#FFD700');
+            text.setAttribute('font', 'kelsans');
+            
+            // Add all elements
+            arContent.appendChild(cube);
+            arContent.appendChild(sphere);
+            arContent.appendChild(text);
+            
+            console.log('🎯 3D objects created! Cube, sphere, and text added to AR scene');
+            console.log('🎯 AR Content children count:', arContent.children.length);
+            
+            // Update status
+            document.getElementById('status').textContent = '🎯 3D OBJECTS CREATED! Look for red cube and gold sphere';
+        }
+        
+        // Test function to manually create 3D object
+        function test3DObject() {
+            console.log('🔧 Manually testing 3D object creation...');
+            create3DObject();
+        }
+        
+        // Clear all 3D objects
+        function clear3DObjects() {
+            const arContent = document.getElementById('ar-content');
+            arContent.innerHTML = '';
+            document.getElementById('status').textContent = '🗑️ All 3D objects cleared';
+            console.log('🗑️ All 3D objects cleared');
+        }
+        
+        // Initialize when page loads
+        window.addEventListener('load', function() {
+            console.log('🧪 Sensor 3D Test page loaded');
+            initializeSensors();
+            
+            // Request permissions for iOS
+            if (window.DeviceMotionEvent && 'requestPermission' in DeviceMotionEvent) {
+                DeviceMotionEvent.requestPermission().then(function(permissionState) {
+                    if (permissionState === 'granted') {
+                        console.log('✅ Motion permission granted');
+                    }
+                });
+            }
+        });
+    </script>
+</body>
+</html>
