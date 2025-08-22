@@ -2,41 +2,149 @@
 <html>
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Camera Test</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>iOS Camera Test</title>
     <style>
         body {
-            font-family: Arial, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             text-align: center;
             padding: 20px;
+            margin: 0;
+            background: #f2f2f7;
+            -webkit-user-select: none;
+            -webkit-touch-callout: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .container {
+            max-width: 500px;
+            margin: 0 auto;
+            padding-top: env(safe-area-inset-top, 20px);
         }
         #video {
             width: 100%;
             max-width: 400px;
-            border: 2px solid #333;
+            border: 3px solid #007AFF;
+            border-radius: 20px;
             margin: 20px 0;
+            box-shadow: 0 8px 25px rgba(0, 122, 255, 0.3);
         }
         .status {
-            padding: 10px;
-            margin: 10px 0;
-            border-radius: 5px;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 15px;
+            font-weight: 600;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
         }
-        .success { background: #d4edda; color: #155724; }
-        .error { background: #f8d7da; color: #721c24; }
-        .info { background: #d1ecf1; color: #0c5460; }
+        .success { 
+            background: rgba(52, 199, 89, 0.2); 
+            color: #34C759; 
+            border: 2px solid rgba(52, 199, 89, 0.3);
+        }
+        .error { 
+            background: rgba(255, 59, 48, 0.2); 
+            color: #FF3B30; 
+            border: 2px solid rgba(255, 59, 48, 0.3);
+        }
+        .info { 
+            background: rgba(0, 122, 255, 0.2); 
+            color: #007AFF; 
+            border: 2px solid rgba(0, 122, 255, 0.3);
+        }
+        .ios-button {
+            background: #007AFF;
+            color: white;
+            border: none;
+            padding: 15px 25px;
+            border-radius: 25px;
+            font-size: 16px;
+            font-weight: 600;
+            margin: 10px 5px;
+            cursor: pointer;
+            -webkit-appearance: none;
+            box-shadow: 0 4px 15px rgba(0, 122, 255, 0.3);
+            transition: all 0.2s ease;
+        }
+        .ios-button:active {
+            background: #0056CC;
+            transform: scale(0.95);
+            box-shadow: 0 2px 8px rgba(0, 122, 255, 0.4);
+        }
+        .camera-controls {
+            margin: 20px 0;
+        }
+        .device-info {
+            background: rgba(142, 142, 147, 0.1);
+            padding: 15px;
+            border-radius: 15px;
+            margin: 20px 0;
+            font-size: 14px;
+            color: #8E8E93;
+        }
+        h1 {
+            color: #1D1D1F;
+            margin-bottom: 10px;
+        }
+        p {
+            color: #6D6D70;
+            margin-bottom: 20px;
+        }
     </style>
 </head>
 <body>
-    <h1>Camera Test</h1>
-    <p>This page tests if your camera is accessible</p>
-    
-    <div id="status" class="status info">Testing camera access...</div>
-    
-    <video id="video" autoplay playsinline></video>
-    
-    <button onclick="testCamera()">Test Camera Again</button>
+    <div class="container">
+        <h1>📱 iOS Camera Test</h1>
+        <p>Testing camera access on your iOS device</p>
+        
+        <div class="device-info">
+            <strong>Device:</strong> <span id="device-info">Detecting...</span><br>
+            <strong>Browser:</strong> <span id="browser-info">Detecting...</span>
+        </div>
+        
+        <div id="status" class="status info">Testing camera access...</div>
+        
+        <video id="video" autoplay playsinline muted></video>
+        
+        <div class="camera-controls">
+            <button class="ios-button" onclick="testFrontCamera()">📱 Front Camera</button>
+            <button class="ios-button" onclick="testBackCamera()">📷 Back Camera</button>
+            <button class="ios-button" onclick="testCamera()">🔄 Test Current</button>
+        </div>
+    </div>
     
     <script>
+        let currentStream = null;
+        let currentFacingMode = 'user'; // Start with front camera
+        
+        // Detect device and browser
+        function detectDevice() {
+            const userAgent = navigator.userAgent;
+            const deviceInfo = document.getElementById('device-info');
+            const browserInfo = document.getElementById('browser-info');
+            
+            if (/iPad/.test(userAgent)) {
+                deviceInfo.textContent = 'iPad';
+            } else if (/iPhone/.test(userAgent)) {
+                deviceInfo.textContent = 'iPhone';
+            } else if (/iPod/.test(userAgent)) {
+                deviceInfo.textContent = 'iPod';
+            } else {
+                deviceInfo.textContent = 'Unknown iOS Device';
+            }
+            
+            if (/Safari/.test(userAgent) && !/Chrome/.test(userAgent)) {
+                browserInfo.textContent = 'Safari';
+            } else if (/Chrome/.test(userAgent)) {
+                browserInfo.textContent = 'Chrome';
+            } else if (/Firefox/.test(userAgent)) {
+                browserInfo.textContent = 'Firefox';
+            } else {
+                browserInfo.textContent = 'Unknown Browser';
+            }
+        }
+        
         function testCamera() {
             const status = document.getElementById('status');
             const video = document.getElementById('video');
@@ -44,22 +152,38 @@
             status.textContent = 'Requesting camera access...';
             status.className = 'status info';
             
+            // Stop any existing stream
+            if (currentStream) {
+                currentStream.getTracks().forEach(track => track.stop());
+            }
+            
             if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
                 navigator.mediaDevices.getUserMedia({ 
                     video: { 
-                        facingMode: 'environment', // Use back camera
+                        facingMode: currentFacingMode,
                         width: { ideal: 1280 },
                         height: { ideal: 720 }
                     } 
                 })
                 .then(function(stream) {
+                    currentStream = stream;
                     video.srcObject = stream;
-                    status.textContent = 'Camera working! You should see video above.';
+                    status.textContent = `Camera working! Using ${currentFacingMode === 'user' ? 'front' : 'back'} camera.`;
                     status.className = 'status success';
                 })
                 .catch(function(error) {
                     console.error('Camera error:', error);
-                    status.textContent = 'Camera error: ' + error.message;
+                    let errorMessage = 'Camera error: ' + error.message;
+                    
+                    if (error.name === 'NotAllowedError') {
+                        errorMessage = 'Camera access denied. Please allow camera access in your browser settings.';
+                    } else if (error.name === 'NotFoundError') {
+                        errorMessage = 'No camera found on this device.';
+                    } else if (error.name === 'NotReadableError') {
+                        errorMessage = 'Camera is already in use by another application.';
+                    }
+                    
+                    status.textContent = errorMessage;
                     status.className = 'status error';
                 });
             } else {
@@ -68,8 +192,65 @@
             }
         }
         
-        // Test camera when page loads
-        window.addEventListener('load', testCamera);
+        function testFrontCamera() {
+            currentFacingMode = 'user';
+            testCamera();
+        }
+        
+        function testBackCamera() {
+            currentFacingMode = 'environment';
+            testCamera();
+        }
+        
+        // iOS-specific optimizations
+        function optimizeForIOS() {
+            if (/iPad|iPhone|iPod/.test(navigator.userAgent)) {
+                console.log('iOS device detected - applying optimizations');
+                
+                // Prevent zoom on double tap
+                document.addEventListener('touchstart', function(e) {
+                    if (e.touches.length > 1) {
+                        e.preventDefault();
+                    }
+                }, { passive: false });
+                
+                // Handle orientation changes
+                window.addEventListener('orientationchange', function() {
+                    setTimeout(function() {
+                        window.scrollTo(0, 0);
+                    }, 100);
+                });
+                
+                // Request camera permission early
+                if (navigator.permissions) {
+                    navigator.permissions.query({ name: 'camera' }).then(function(result) {
+                        if (result.state === 'denied') {
+                            alert('Please enable camera access in your iOS settings to use this app.');
+                        }
+                    });
+                }
+            }
+        }
+        
+        // Initialize when page loads
+        window.addEventListener('load', function() {
+            detectDevice();
+            optimizeForIOS();
+            testFrontCamera(); // Start with front camera
+        });
+        
+        // Handle page visibility changes
+        document.addEventListener('visibilitychange', function() {
+            if (document.hidden) {
+                // Page is hidden, stop camera to save battery
+                if (currentStream) {
+                    currentStream.getTracks().forEach(track => track.stop());
+                }
+            } else {
+                // Page is visible again, restart camera
+                setTimeout(testCamera, 500);
+            }
+        });
     </script>
 </body>
 </html>

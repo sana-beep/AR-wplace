@@ -2,26 +2,33 @@
 <html>
   <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Wplace AR - View Above You</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Wplace AR - iOS</title>
     <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/ar.js@3.3.2/aframe/build/aframe-ar.js"></script>
     <style>
       body {
         margin: 0;
         overflow: hidden;
-        font-family: Arial, sans-serif;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        -webkit-user-select: none;
+        -webkit-touch-callout: none;
+        -webkit-tap-highlight-color: transparent;
       }
       #info-panel {
         position: fixed;
-        top: 20px;
+        top: env(safe-area-inset-top, 20px);
         left: 20px;
         background: rgba(0, 0, 0, 0.8);
         color: white;
         padding: 15px;
-        border-radius: 10px;
+        border-radius: 15px;
         z-index: 1000;
         max-width: 300px;
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
       }
       #location-info {
         margin-bottom: 10px;
@@ -36,19 +43,48 @@
       .error {
         color: #ff6b6b;
       }
+      .ios-button {
+        background: #007AFF;
+        color: white;
+        border: none;
+        padding: 12px 20px;
+        border-radius: 25px;
+        font-size: 16px;
+        font-weight: 600;
+        margin: 10px 5px;
+        cursor: pointer;
+        -webkit-appearance: none;
+      }
+      .ios-button:active {
+        background: #0056CC;
+        transform: scale(0.95);
+      }
+      #camera-controls {
+        position: fixed;
+        bottom: env(safe-area-inset-bottom, 20px);
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 1000;
+        text-align: center;
+      }
     </style>
   </head>
   <body>
     <div id="info-panel">
       <div id="location-info">
-        <strong>Location:</strong> <span id="coordinates">Getting location...</span>
+        <strong>📍 Location:</strong> <span id="coordinates">Getting location...</span>
       </div>
       <div id="wplace-data">
-        <strong>Wplace Data:</strong> <span id="data-status">Loading...</span>
+        <strong>🏢 Wplace Data:</strong> <span id="data-status">Loading...</span>
       </div>
     </div>
 
-    <a-scene embedded arjs="sourceType: webcam; sourceWidth: 1280; sourceHeight: 960; displayWidth: 1280; displayHeight: 960;">
+    <div id="camera-controls">
+      <button class="ios-button" onclick="switchCamera()">📷 Switch Camera</button>
+      <button class="ios-button" onclick="refreshLocation()">🔄 Refresh</button>
+    </div>
+
+    <a-scene embedded arjs="sourceType: webcam; sourceWidth: 1280; sourceHeight: 720; displayWidth: 1280; displayHeight: 720; facingMode: user;">
 
       <!-- AR content will be dynamically added here -->
       <a-entity id="ar-content"></a-entity>
@@ -60,6 +96,7 @@
     <script>
       let currentLocation = null;
       let wplaceData = null;
+      let isFrontCamera = true;
 
       // Get user's location
       function getLocation() {
@@ -81,11 +118,39 @@
               console.error('Error getting location:', error);
               document.getElementById('coordinates').textContent = 'Location access denied';
               document.getElementById('data-status').textContent = 'Cannot fetch data without location';
+            },
+            {
+              enableHighAccuracy: true,
+              timeout: 10000,
+              maximumAge: 300000
             }
           );
         } else {
           document.getElementById('coordinates').textContent = 'Geolocation not supported';
         }
+      }
+
+      // Switch between front and back camera
+      function switchCamera() {
+        isFrontCamera = !isFrontCamera;
+        const facingMode = isFrontCamera ? 'user' : 'environment';
+        
+        // Reload the AR scene with new camera
+        const scene = document.querySelector('a-scene');
+        const arjs = scene.getAttribute('arjs');
+        arjs.facingMode = facingMode;
+        scene.setAttribute('arjs', arjs);
+        
+        // Force scene reload
+        scene.renderer.xr.getSession().end();
+        location.reload();
+      }
+
+      // Refresh location manually
+      function refreshLocation() {
+        document.getElementById('coordinates').textContent = 'Refreshing...';
+        document.getElementById('data-status').textContent = 'Refreshing...';
+        getLocation();
       }
 
       // Fetch data from wplace.live (you'll need to implement the actual API call)
@@ -148,11 +213,41 @@
 
       // Initialize the app when the page loads
       window.addEventListener('load', function() {
+        // iOS-specific initialization
+        if (/iPad|iPhone|iPod/.test(navigator.userAgent)) {
+          console.log('iOS device detected - optimizing for iOS');
+          
+          // Request permissions early
+          if (navigator.permissions) {
+            navigator.permissions.query({ name: 'camera' }).then(function(result) {
+              if (result.state === 'denied') {
+                alert('Please enable camera access in your iOS settings to use this AR app.');
+              }
+            });
+          }
+        }
+        
         getLocation();
       });
 
       // Update location periodically (every 30 seconds)
       setInterval(getLocation, 30000);
+
+      // Handle iOS-specific events
+      document.addEventListener('touchstart', function(e) {
+        // Prevent zoom on double tap
+        if (e.touches.length > 1) {
+          e.preventDefault();
+        }
+      }, { passive: false });
+
+      // Handle device orientation changes
+      window.addEventListener('orientationchange', function() {
+        setTimeout(function() {
+          // Refresh the view after orientation change
+          window.scrollTo(0, 0);
+        }, 100);
+      });
     </script>
   </body>
 </html>
