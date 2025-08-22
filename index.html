@@ -112,9 +112,22 @@
       .sensor-active { background: #34C759; }
       .sensor-inactive { background: #FF3B30; }
       .sensor-unknown { background: #FF9500; }
+      #camera-feed {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: -1;
+        object-fit: cover;
+        display: none;
+      }
     </style>
   </head>
   <body>
+    <!-- Hidden camera feed for debugging -->
+    <video id="camera-feed" autoplay playsinline muted></video>
+
     <div id="info-panel">
       <div id="location-info">
         <strong>📍 Location:</strong> <span id="coordinates">Getting location...</span>
@@ -150,6 +163,7 @@
       <button class="ios-button" onclick="refreshLocation()">🔄 Refresh</button>
       <button class="ios-button" onclick="testCameraAccess()">📱 Test Camera</button>
       <button class="ios-button" onclick="toggleSensorDisplay()">📊 Toggle Sensors</button>
+      <button class="ios-button" onclick="toggleCameraFeed()">👁️ Show Camera</button>
     </div>
 
     <div id="camera-status">
@@ -157,7 +171,7 @@
       <button class="ios-button" onclick="hideCameraStatus()" style="margin-top: 15px;">OK</button>
     </div>
 
-    <a-scene embedded arjs="sourceType: webcam; sourceWidth: 1280; sourceHeight: 720; displayWidth: 1280; displayHeight: 720; facingMode: user;">
+    <a-scene embedded arjs="sourceType: webcam; sourceWidth: 1280; sourceHeight: 720; displayWidth: 1280; displayHeight: 720; facingMode: user; debugUIEnabled: false;">
 
       <!-- AR content will be dynamically added here -->
       <a-entity id="ar-content"></a-entity>
@@ -171,6 +185,7 @@
       let wplaceData = null;
       let isFrontCamera = true;
       let sensorsVisible = true;
+      let cameraFeedVisible = false;
       let sensorData = {
         accelerometer: { x: 0, y: 0, z: 0, active: false },
         gyroscope: { x: 0, y: 0, z: 0, active: false },
@@ -180,6 +195,23 @@
         light: { level: 0, active: false },
         proximity: { distance: 0, active: false }
       };
+
+      // Toggle camera feed visibility for debugging
+      function toggleCameraFeed() {
+        cameraFeedVisible = !cameraFeedVisible;
+        const cameraFeed = document.getElementById('camera-feed');
+        const arScene = document.querySelector('a-scene');
+        
+        if (cameraFeedVisible) {
+          cameraFeed.style.display = 'block';
+          arScene.style.display = 'none';
+          document.getElementById('data-status').textContent = '👁️ Camera Feed Visible (Debug Mode)';
+        } else {
+          cameraFeed.style.display = 'none';
+          arScene.style.display = 'block';
+          document.getElementById('data-status').textContent = '✅ AR Mode Active';
+        }
+      }
 
       // Toggle sensor display
       function toggleSensorDisplay() {
@@ -418,8 +450,15 @@
           })
           .then(function(stream) {
             messageDiv.textContent = '✅ Camera working! AR should work now.';
-            // Stop the test stream
-            stream.getTracks().forEach(track => track.stop());
+            
+            // Also set the hidden camera feed for debugging
+            const cameraFeed = document.getElementById('camera-feed');
+            cameraFeed.srcObject = stream;
+            
+            // Stop the test stream after a delay
+            setTimeout(() => {
+              stream.getTracks().forEach(track => track.stop());
+            }, 2000);
           })
           .catch(function(error) {
             console.error('Camera error:', error);
