@@ -196,22 +196,48 @@
         proximity: { distance: 0, active: false }
       };
 
-      // Toggle camera feed visibility for debugging
-      function toggleCameraFeed() {
-        cameraFeedVisible = !cameraFeedVisible;
-        const cameraFeed = document.getElementById('camera-feed');
-        const arScene = document.querySelector('a-scene');
-        
-        if (cameraFeedVisible) {
-          cameraFeed.style.display = 'block';
-          arScene.style.display = 'none';
-          document.getElementById('data-status').textContent = '👁️ Camera Feed Visible (Debug Mode)';
-        } else {
-          cameraFeed.style.display = 'none';
-          arScene.style.display = 'block';
-          document.getElementById('data-status').textContent = '✅ AR Mode Active';
-        }
-      }
+             // Toggle camera feed visibility for debugging
+       function toggleCameraFeed() {
+         cameraFeedVisible = !cameraFeedVisible;
+         const cameraFeed = document.getElementById('camera-feed');
+         const arScene = document.querySelector('a-scene');
+         
+         if (cameraFeedVisible) {
+           // Start camera stream for debug mode
+           if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+             navigator.mediaDevices.getUserMedia({ 
+               video: { 
+                 facingMode: 'environment',
+                 width: { ideal: 1280 },
+                 height: { ideal: 720 }
+               } 
+             })
+             .then(function(stream) {
+               cameraFeed.srcObject = stream;
+               cameraFeed.style.display = 'block';
+               arScene.style.display = 'none';
+               document.getElementById('data-status').textContent = '👁️ Camera Feed Visible (Debug Mode)';
+               
+               // Store stream reference to stop it later
+               window.debugCameraStream = stream;
+             })
+             .catch(function(error) {
+               console.error('Camera error in debug mode:', error);
+               document.getElementById('data-status').textContent = '❌ Camera error in debug mode';
+               cameraFeedVisible = false;
+             });
+           }
+         } else {
+           // Stop camera stream and return to AR mode
+           if (window.debugCameraStream) {
+             window.debugCameraStream.getTracks().forEach(track => track.stop());
+             window.debugCameraStream = null;
+           }
+           cameraFeed.style.display = 'none';
+           arScene.style.display = 'block';
+           document.getElementById('data-status').textContent = '✅ AR Mode Active';
+         }
+       }
 
       // Toggle sensor display
       function toggleSensorDisplay() {
@@ -451,14 +477,16 @@
           .then(function(stream) {
             messageDiv.textContent = '✅ Camera working! AR should work now.';
             
-            // Also set the hidden camera feed for debugging
-            const cameraFeed = document.getElementById('camera-feed');
-            cameraFeed.srcObject = stream;
-            
-            // Stop the test stream after a delay
-            setTimeout(() => {
-              stream.getTracks().forEach(track => track.stop());
-            }, 2000);
+                         // Also set the hidden camera feed for debugging (but don't stop it)
+             const cameraFeed = document.getElementById('camera-feed');
+             if (!cameraFeedVisible) {
+               cameraFeed.srcObject = stream;
+             }
+             
+             // Stop the test stream after a delay
+             setTimeout(() => {
+               stream.getTracks().forEach(track => track.stop());
+             }, 2000);
           })
           .catch(function(error) {
             console.error('Camera error:', error);
