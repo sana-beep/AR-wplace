@@ -424,91 +424,131 @@
         
         // Handle tap-to-place events
         function handleTapToPlace(event) {
-            if (!surfaceDetected || isPlacingObject) return;
-            
-            event.preventDefault();
-            console.log('👆 Tap detected, placing object...');
-            
-            // Get tap position
-            const tapX = event.clientX || event.touches[0].clientX;
-            const tapY = event.clientY || event.touches[0].clientY;
-            
-            // Convert screen coordinates to world coordinates
-            const worldPosition = screenToWorldPosition(tapX, tapY);
-            
-            // Place cube at tap position
-            placeCube(worldPosition);
-            
-            // Prevent multiple rapid placements
-            isPlacingObject = true;
-            setTimeout(() => { isPlacingObject = false; }, 500);
+            try {
+                if (!surfaceDetected || isPlacingObject) return;
+                
+                console.log('👆 Tap detected, placing object...');
+                
+                // Get tap position
+                let tapX, tapY;
+                if (event.touches && event.touches.length > 0) {
+                    tapX = event.touches[0].clientX;
+                    tapY = event.touches[0].clientY;
+                } else {
+                    tapX = event.clientX;
+                    tapY = event.clientY;
+                }
+                
+                console.log('Tap coordinates:', tapX, tapY);
+                
+                // Convert screen coordinates to world coordinates
+                const worldPosition = screenToWorldPosition(tapX, tapY);
+                
+                // Place cube at tap position
+                placeCube(worldPosition);
+                
+                // Prevent multiple rapid placements
+                isPlacingObject = true;
+                setTimeout(() => { isPlacingObject = false; }, 500);
+                
+            } catch (error) {
+                console.error('❌ Error in handleTapToPlace:', error);
+                updateStatus('❌ Error placing object - Check console');
+            }
         }
         
         // Convert screen coordinates to world coordinates
         function screenToWorldPosition(screenX, screenY) {
-            // Get camera position and rotation
-            const camera = document.querySelector('[camera]');
-            if (!camera) {
-                console.warn('Camera not found, using default positioning');
-                return { x: 0, y: 0, z: -3 };
+            try {
+                // Validate input
+                if (typeof screenX !== 'number' || typeof screenY !== 'number') {
+                    console.warn('Invalid screen coordinates, using default positioning');
+                    return { x: 0, y: 0, z: -3 };
+                }
+                
+                // Get camera position and rotation
+                const camera = document.querySelector('[camera]');
+                if (!camera) {
+                    console.warn('Camera not found, using default positioning');
+                    return { x: 0, y: 0, z: -3 };
+                }
+                
+                // Normalize screen coordinates (-1 to 1)
+                const normalizedX = (screenX / window.innerWidth - 0.5) * 2;
+                const normalizedY = (screenY / window.innerHeight - 0.5) * 2;
+                
+                // Calculate world position relative to camera
+                const distance = 3; // Distance from camera
+                const worldX = normalizedX * distance;
+                const worldY = -normalizedY * distance; // Invert Y axis
+                const worldZ = -distance; // Place in front of camera
+                
+                console.log('Screen coords:', screenX, screenY);
+                console.log('World coords:', worldX, worldY, worldZ);
+                
+                return {
+                    x: worldX,
+                    y: worldY,
+                    z: worldZ
+                };
+                
+            } catch (error) {
+                console.error('❌ Error in screenToWorldPosition:', error);
+                return { x: 0, y: 0, z: -3 }; // Fallback position
             }
-            
-            // Normalize screen coordinates (-1 to 1)
-            const normalizedX = (screenX / window.innerWidth - 0.5) * 2;
-            const normalizedY = (screenY / window.innerHeight - 0.5) * 2;
-            
-            // Calculate world position relative to camera
-            const distance = 3; // Distance from camera
-            const worldX = normalizedX * distance;
-            const worldY = -normalizedY * distance; // Invert Y axis
-            const worldZ = -distance; // Place in front of camera
-            
-            console.log('Screen coords:', screenX, screenY);
-            console.log('World coords:', worldX, worldY, worldZ);
-            
-            return {
-                x: worldX,
-                y: worldY,
-                z: worldZ
-            };
         }
         
         // Place a cube at the specified world position
         function placeCube(position) {
-            console.log('🎲 Placing cube at:', position);
-            
-            // Create cube entity
-            const cube = document.createElement('a-box');
-            cube.setAttribute('position', `${position.x} ${position.y} ${position.z}`);
-            cube.setAttribute('width', '1');
-            cube.setAttribute('height', '1');
-            cube.setAttribute('depth', '1');
-            cube.setAttribute('color', getRandomColor());
-            cube.setAttribute('material', 'shader: flat; roughness: 0.5; metalness: 0.1');
-            
-            // Add unique ID and make it selectable
-            cube.setAttribute('id', `cube-${Date.now()}`);
-            cube.setAttribute('class', 'placeable-object');
-            cube.setAttribute('data-position', JSON.stringify(position));
-            
-            // Add to AR content container
-            const arContent = document.getElementById('ar-content');
-            arContent.appendChild(cube);
-            
-            // Store reference
-            placedObjects.push({
-                element: cube,
-                position: position,
-                rotation: { x: 0, y: 0, z: 0 },
-                scale: { x: 1, y: 1, z: 1 }
-            });
-            
-            console.log('✅ Cube placed successfully');
-            updateStatus(`🎲 Cube placed! Total objects: ${placedObjects.length}`);
-            updateDebugInfo();
-            
-            // Select the newly placed object
-            selectObject(cube);
+            try {
+                console.log('🎲 Placing cube at:', position);
+                
+                // Validate position
+                if (!position || typeof position.x === 'undefined') {
+                    throw new Error('Invalid position object');
+                }
+                
+                // Create cube entity
+                const cube = document.createElement('a-box');
+                cube.setAttribute('position', `${position.x} ${position.y} ${position.z}`);
+                cube.setAttribute('width', '1');
+                cube.setAttribute('height', '1');
+                cube.setAttribute('depth', '1');
+                cube.setAttribute('color', getRandomColor());
+                cube.setAttribute('material', 'shader: flat; roughness: 0.5; metalness: 0.1');
+                
+                // Add unique ID and make it selectable
+                cube.setAttribute('id', `cube-${Date.now()}`);
+                cube.setAttribute('class', 'placeable-object');
+                cube.setAttribute('data-position', JSON.stringify(position));
+                
+                // Add to AR content container
+                const arContent = document.getElementById('ar-content');
+                if (!arContent) {
+                    throw new Error('AR content container not found');
+                }
+                
+                arContent.appendChild(cube);
+                
+                // Store reference
+                placedObjects.push({
+                    element: cube,
+                    position: position,
+                    rotation: { x: 0, y: 0, z: 0 },
+                    scale: { x: 1, y: 1, z: 1 }
+                });
+                
+                console.log('✅ Cube placed successfully');
+                updateStatus(`🎲 Cube placed! Total objects: ${placedObjects.length}`);
+                updateDebugInfo();
+                
+                // Select the newly placed object
+                selectObject(cube);
+                
+            } catch (error) {
+                console.error('❌ Error placing cube:', error);
+                updateStatus(`❌ Failed to place cube: ${error.message}`);
+            }
         }
         
         // ============================================================================
@@ -793,18 +833,54 @@
         
         // Test object placement function
         function testObjectPlacement() {
-            console.log('🧪 Testing object placement...');
-            
-            if (!surfaceDetected) {
-                updateStatus('❌ Surface detection not enabled - Enable it first');
-                return;
+            try {
+                console.log('🧪 Testing object placement...');
+                
+                if (!surfaceDetected) {
+                    updateStatus('❌ Surface detection not enabled - Enable it first');
+                    return;
+                }
+                
+                // Create a simple test cube directly in the scene
+                const arContent = document.getElementById('ar-content');
+                if (!arContent) {
+                    updateStatus('❌ AR content container not found');
+                    return;
+                }
+                
+                // Create cube entity
+                const cube = document.createElement('a-box');
+                cube.setAttribute('position', '0 0 -3');
+                cube.setAttribute('width', '1');
+                cube.setAttribute('height', '1');
+                cube.setAttribute('depth', '1');
+                cube.setAttribute('color', '#FF0000');
+                cube.setAttribute('material', 'shader: flat');
+                cube.setAttribute('id', `test-cube-${Date.now()}`);
+                cube.setAttribute('class', 'placeable-object');
+                
+                // Add to scene
+                arContent.appendChild(cube);
+                
+                // Store reference
+                placedObjects.push({
+                    element: cube,
+                    position: { x: 0, y: 0, z: -3 },
+                    rotation: { x: 0, y: 0, z: 0 },
+                    scale: { x: 1, y: 1, z: 1 }
+                });
+                
+                console.log('✅ Test cube placed successfully');
+                updateStatus('🧪 Test cube placed! Check AR view');
+                updateDebugInfo();
+                
+                // Select the test cube
+                selectObject(cube);
+                
+            } catch (error) {
+                console.error('❌ Error in testObjectPlacement:', error);
+                updateStatus(`❌ Failed to place test cube: ${error.message}`);
             }
-            
-            // Place a test cube at a fixed position
-            const testPosition = { x: 0, y: 0, z: -3 };
-            placeCube(testPosition);
-            
-            updateStatus('🧪 Test object placed - Check if it appears in AR view');
         }
         
         // ============================================================================
@@ -836,7 +912,20 @@
         // Handle general errors
         window.addEventListener('error', function(event) {
             console.error('❌ General error:', event.error);
-            updateStatus('❌ System error - Please refresh page');
+            console.error('Error details:', {
+                message: event.message,
+                filename: event.filename,
+                lineno: event.lineno,
+                colno: event.colno,
+                error: event.error
+            });
+            updateStatus('❌ System error - Check console for details');
+        });
+        
+        // Handle unhandled promise rejections
+        window.addEventListener('unhandledrejection', function(event) {
+            console.error('❌ Unhandled promise rejection:', event.reason);
+            updateStatus('❌ Promise error - Check console for details');
         });
         
         console.log('🚀 AR Surface Detection App Initialized Successfully!');
