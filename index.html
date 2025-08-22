@@ -271,6 +271,7 @@
          <button class="menu-item" onclick="toggleSensorDisplay()">📊 Toggle Sensors</button>
          <button class="menu-item" onclick="toggleCameraFeed()">👁️ Show Camera</button>
          <button class="menu-item" onclick="testCompassTrigger()">🧭 Test Compass</button>
+       <button class="menu-item" onclick="debugCreate3DObject()">🔧 Debug 3D Object</button>
          
          <div class="menu-divider"></div>
          
@@ -786,24 +787,77 @@
          
          // Create image if it doesn't exist
          if (!compassImage) {
-           compassImage = document.createElement('a-image');
-           compassImage.setAttribute('id', 'compass-triggered-image');
-           compassImage.setAttribute('src', 'testimg.jpg');
-           compassImage.setAttribute('position', '0 2 -3');
-           compassImage.setAttribute('width', '3');
-           compassImage.setAttribute('height', '3');
-           compassImage.setAttribute('rotation', '0 0 0');
-           compassImage.setAttribute('look-at', '[camera]');
+           // Try multiple approaches for better visibility
+           try {
+             // Method 1: 3D Box with image texture
+             compassImage = document.createElement('a-box');
+             compassImage.setAttribute('id', 'compass-triggered-image');
+             compassImage.setAttribute('position', '0 1.5 -2');
+             compassImage.setAttribute('width', '2');
+             compassImage.setAttribute('height', '2');
+             compassImage.setAttribute('depth', '0.2');
+             compassImage.setAttribute('rotation', '0 0 0');
+             compassImage.setAttribute('color', '#ffffff');
+             compassImage.setAttribute('material', 'src: testimg.jpg; repeat: 1 1');
+             
+             console.log('🎯 Method 1: 3D Box created');
+           } catch (e) {
+             console.log('🎯 Method 1 failed, trying Method 2:', e);
+             
+             // Method 2: Simple plane with image
+             compassImage = document.createElement('a-plane');
+             compassImage.setAttribute('id', 'compass-triggered-image');
+             compassImage.setAttribute('src', 'testimg.jpg');
+             compassImage.setAttribute('position', '0 1.5 -2');
+             compassImage.setAttribute('width', '2');
+             compassImage.setAttribute('height', '2');
+             compassImage.setAttribute('rotation', '0 0 0');
+             
+             console.log('🎯 Method 2: Plane created');
+           }
            
            // Add to AR scene
            const arContent = document.getElementById('ar-content');
            arContent.appendChild(compassImage);
            
-           console.log('🎯 Compass image created and added to AR scene');
+           // Add a glowing sphere to make it super visible
+           const glowSphere = document.createElement('a-sphere');
+           glowSphere.setAttribute('position', '0 2.5 -2');
+           glowSphere.setAttribute('radius', '0.3');
+           glowSphere.setAttribute('color', '#FFD700');
+           glowSphere.setAttribute('material', 'shader: flat; emissive: #FFD700; emissiveIntensity: 0.8');
+           glowSphere.setAttribute('animation', 'property: scale; to: 1.5 1.5 1.5; dur: 1000; loop: true; dir: alternate');
+           arContent.appendChild(glowSphere);
+           
+           // Add text label above the image
+           const labelText = document.createElement('a-text');
+           labelText.setAttribute('value', '🎯 COMPASS TRIGGERED!');
+           labelText.setAttribute('position', '0 3 -2');
+           labelText.setAttribute('align', 'center');
+           labelText.setAttribute('width', '4');
+           labelText.setAttribute('color', '#FFD700');
+           labelText.setAttribute('font', 'kelsans');
+           arContent.appendChild(labelText);
+           
+           console.log('🎯 3D Compass image created and added to AR scene at position:', compassImage.getAttribute('position'));
+           console.log('🎯 AR Content children count:', arContent.children.length);
+           console.log('🎯 Added glow sphere and label for visibility');
            
            // Update status with current range
-           document.getElementById('data-status').textContent = `🎯 Compass Image Active (${compassRange.min}-${compassRange.max}°)`;
+           document.getElementById('data-status').textContent = `🎯 3D Image Active (${compassRange.min}-${compassRange.max}°)`;
            document.getElementById('data-status').className = 'success';
+           
+           // Add some animation to make it more visible
+           setTimeout(() => {
+             if (compassImage) {
+               try {
+                 compassImage.setAttribute('animation', 'property: rotation; to: 0 360 0; dur: 5000; loop: true');
+                 console.log('🎯 Animation added to image');
+               } catch (e) {
+                 console.log('🎯 Animation failed:', e);
+               }
+             }
+           }, 500);
          }
        }
        
@@ -812,6 +866,25 @@
          const compassImage = document.getElementById('compass-triggered-image');
          if (compassImage) {
            compassImage.remove();
+           
+           // Also remove any glow spheres and labels
+           const arContent = document.getElementById('ar-content');
+           const glowSpheres = arContent.querySelectorAll('a-sphere');
+           const labels = arContent.querySelectorAll('a-text');
+           
+           glowSpheres.forEach(sphere => {
+             if (sphere.getAttribute('color') === '#FFD700') {
+               sphere.remove();
+             }
+           });
+           
+           labels.forEach(label => {
+             if (label.getAttribute('value') === '🎯 COMPASS TRIGGERED!') {
+               label.remove();
+             }
+           });
+           
+           console.log('🎯 Compass image and related elements hidden');
            
            // Update status back to normal
            document.getElementById('data-status').textContent = '✅ AR Content Ready!';
@@ -837,6 +910,40 @@
          } else {
            messageDiv.textContent = '❌ Compass not active - rotate device to activate';
          }
+       }
+       
+       // Debug function to manually create a 3D object
+       function debugCreate3DObject() {
+         console.log('🔧 Debug: Creating 3D object manually...');
+         
+         const arContent = document.getElementById('ar-content');
+         console.log('🔧 Debug: AR Content element:', arContent);
+         console.log('🔧 Debug: AR Content children before:', arContent.children.length);
+         
+         // Create a simple red cube for testing
+         const testCube = document.createElement('a-box');
+         testCube.setAttribute('position', '0 0 -3');
+         testCube.setAttribute('width', '1');
+         testCube.setAttribute('height', '1');
+         testCube.setAttribute('depth', '1');
+         testCube.setAttribute('color', '#FF0000');
+         testCube.setAttribute('animation', 'property: rotation; to: 0 360 0; dur: 3000; loop: true');
+         
+         arContent.appendChild(testCube);
+         
+         console.log('🔧 Debug: Test cube added, children after:', arContent.children.length);
+         console.log('🔧 Debug: Test cube element:', testCube);
+         
+         // Show status
+         document.getElementById('data-status').textContent = '🔧 Debug: Red cube created at (0, 0, -3)';
+         document.getElementById('data-status').className = 'success';
+         
+         // Remove after 5 seconds
+         setTimeout(() => {
+           testCube.remove();
+           document.getElementById('data-status').textContent = '✅ AR Content Ready!';
+           console.log('🔧 Debug: Test cube removed');
+         }, 5000);
        }
        
        // Menu functions
