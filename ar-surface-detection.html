@@ -166,6 +166,56 @@
              border-radius: 25px;
              box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
          }
+         
+         /* Gesture Control Styling */
+         .gesture-mode-buttons {
+             display: flex;
+             gap: 5px;
+             margin-bottom: 10px;
+         }
+         
+         .gesture-mode-btn {
+             flex: 1;
+             background: #333;
+             color: white;
+             border: 2px solid #555;
+             padding: 8px 6px;
+             border-radius: 15px;
+             font-size: 11px;
+             cursor: pointer;
+             transition: all 0.2s ease;
+         }
+         
+         .gesture-mode-btn:hover {
+             background: #444;
+             border-color: #666;
+         }
+         
+         .gesture-mode-btn.active-mode {
+             background: #007AFF;
+             border-color: #0056CC;
+             transform: scale(1.05);
+         }
+         
+         .gesture-instructions {
+             text-align: center;
+             padding: 8px;
+             background: rgba(0, 122, 255, 0.1);
+             border-radius: 10px;
+             border: 1px solid rgba(0, 122, 255, 0.3);
+         }
+         
+         #gesture-mode-indicator {
+             font-weight: bold;
+             font-size: 12px;
+             color: #007AFF;
+             margin-bottom: 4px;
+         }
+         
+         .gesture-hint {
+             font-size: 10px;
+             opacity: 0.8;
+         }
     </style>
 </head>
 <body>
@@ -178,9 +228,9 @@
      <div id="instructions">
          <div class="instruction-text">📱 Tap Menu button to open controls</div>
          <div class="instruction-text">🎲 Use Add Cube button to place objects</div>
-         <div class="instruction-text">🔄 One finger: Rotate selected object</div>
-         <div class="instruction-text">📏 Two finger: Scale selected object</div>
-         <div class="instruction-text">🚀 Two finger: Move selected object</div>
+         <div class="instruction-text">👆 Select gesture mode (Rotate/Scale/Move)</div>
+         <div class="instruction-text">🖐️ Touch & drag to manipulate objects</div>
+         <div class="instruction-text">🎯 Each mode has different touch behavior</div>
      </div>
     
          <!-- Menu Toggle Button -->
@@ -194,6 +244,19 @@
              <h3>🎯 Object Controls</h3>
              <button class="control-btn" onclick="addNewCube()">🎲 Add Cube</button>
              <button class="control-btn" onclick="clearAllObjects()">🗑️ Clear All</button>
+         </div>
+         
+         <div class="menu-section">
+             <h3>👆 Gesture Controls</h3>
+             <div class="gesture-mode-buttons">
+                 <button class="gesture-mode-btn active-mode" data-mode="rotate" onclick="setGestureMode('rotate')">🔄 Rotate</button>
+                 <button class="gesture-mode-btn" data-mode="scale" onclick="setGestureMode('scale')">📏 Scale</button>
+                 <button class="gesture-mode-btn" data-mode="move" onclick="setGestureMode('move')">🚀 Move</button>
+             </div>
+             <div class="gesture-instructions">
+                 <div id="gesture-mode-indicator">🔄 ROTATE</div>
+                 <div class="gesture-hint">Touch & drag to manipulate</div>
+             </div>
          </div>
          
          <div class="menu-section">
@@ -276,13 +339,14 @@
         let surfaceMarkers = [];
         let surfaceDetectionActive = false;
         
-        // Gesture control variables
-        let touchStart = { x: 0, y: 0, time: 0 };
-        let touchEnd = { x: 0, y: 0, time: 0 };
-        let isDragging = false;
-        let lastTouchDistance = 0;
-        let lastTouchAngle = 0;
-        let gestureMode = 'none'; // 'rotate', 'scale', 'move'
+                 // Gesture control variables
+         let touchStart = { x: 0, y: 0, time: 0 };
+         let touchEnd = { x: 0, y: 0, time: 0 };
+         let isDragging = false;
+         let lastTouchDistance = 0;
+         let lastTouchAngle = 0;
+         let currentGestureMode = 'rotate'; // 'rotate', 'scale', 'move'
+         let gestureActive = false;
         
         // ============================================================================
         // INITIALIZATION FUNCTIONS
@@ -305,6 +369,11 @@
              
              // Initialize menu state
              document.getElementById('controls').style.display = 'none';
+             
+             // Initialize gesture mode display
+             setTimeout(() => {
+                 updateGestureModeDisplay();
+             }, 100);
          });
         
         // Initialize AR session and surface detection
@@ -632,162 +701,147 @@
             document.addEventListener('click', handleObjectClick);
         }
         
-        // Handle touch start events
-        function handleTouchStart(event) {
-            if (!selectedObject) return;
-            
-            // Only prevent default for object manipulation, not camera movement
-            if (event.touches.length === 1) {
-                // Single finger - prepare for rotation
-                touchStart.x = event.touches[0].clientX;
-                touchStart.y = event.touches[0].clientY;
-                touchStart.time = Date.now();
-                isDragging = true;
-                gestureMode = 'rotate';
-                
-                console.log('🔄 Single finger touch - Rotation mode');
-                
-            } else if (event.touches.length === 2) {
-                // Two fingers - prepare for scale or move
-                const touch1 = event.touches[0];
-                const touch2 = event.touches[1];
-                
-                lastTouchDistance = getTouchDistance(touch1, touch2);
-                lastTouchAngle = getTouchAngle(touch1, touch2);
-                
-                // Determine if this is a pinch (scale) or drag (move)
-                const centerX = (touch1.clientX + touch2.clientX) / 2;
-                const centerY = (touch1.clientY + touch2.clientY) / 2;
-                
-                touchStart.x = centerX;
-                touchStart.y = centerY;
-                isDragging = true;
-                
-                // Check if fingers are moving apart/together (scale) vs moving together (move)
-                setTimeout(() => {
-                    if (isDragging) {
-                        const currentDistance = getTouchDistance(touch1, touch2);
-                        const distanceChange = Math.abs(currentDistance - lastTouchDistance);
-                        
-                        if (distanceChange > 10) {
-                            gestureMode = 'scale';
-                            console.log('📏 Two finger touch - Scale mode');
-                        } else {
-                            gestureMode = 'move';
-                            console.log('🚀 Two finger touch - Move mode');
-                        }
-                    }
-                }, 100);
-            }
-        }
+                 // Handle touch start events - Simplified single-finger control
+         function handleTouchStart(event) {
+             if (!selectedObject) return;
+             
+             // Only handle single finger touches for object manipulation
+             if (event.touches.length === 1) {
+                 const touch = event.touches[0];
+                 touchStart.x = touch.clientX;
+                 touchStart.y = touch.clientY;
+                 touchStart.time = Date.now();
+                 isDragging = true;
+                 gestureActive = true;
+                 
+                 console.log(`👆 Touch started in ${currentGestureMode} mode`);
+                 
+                 // Prevent default to avoid camera movement conflicts
+                 event.preventDefault();
+             }
+         }
         
-        // Handle touch move events
-        function handleTouchMove(event) {
-            if (!isDragging || !selectedObject) return;
-            
-            event.preventDefault();
-            
-            if (gestureMode === 'rotate' && event.touches.length === 1) {
-                // Rotate object based on finger movement
-                handleRotation(event.touches[0]);
-                
-            } else if (gestureMode === 'scale' && event.touches.length === 2) {
-                // Scale object based on pinch gesture
-                handleScaling(event.touches[0], event.touches[1]);
-                
-            } else if (gestureMode === 'move' && event.touches.length === 2) {
-                // Move object based on two-finger drag
-                handleMovement(event.touches[0], event.touches[1]);
-            }
-        }
+                 // Handle touch move events - Simplified single-finger control
+         function handleTouchMove(event) {
+             if (!isDragging || !selectedObject || !gestureActive) return;
+             
+             // Only handle single finger touches
+             if (event.touches.length === 1) {
+                 event.preventDefault();
+                 
+                 const touch = event.touches[0];
+                 
+                 // Handle based on current gesture mode
+                 switch (currentGestureMode) {
+                     case 'rotate':
+                         handleRotation(touch);
+                         break;
+                     case 'scale':
+                         handleScaling(touch);
+                         break;
+                     case 'move':
+                         handleMovement(touch);
+                         break;
+                 }
+             }
+         }
         
-        // Handle touch end events
-        function handleTouchEnd(event) {
-            if (!isDragging) return;
-            
-            isDragging = false;
-            gestureMode = 'none';
-            
-            console.log('👆 Touch gesture ended');
-            
-            // Update object data
-            if (selectedObject) {
-                updateObjectData(selectedObject);
-            }
-        }
+                 // Handle touch end events
+         function handleTouchEnd(event) {
+             if (!isDragging) return;
+             
+             isDragging = false;
+             gestureActive = false;
+             
+             console.log('👆 Touch gesture ended');
+             
+             // Update object data
+             if (selectedObject) {
+                 updateObjectData(selectedObject);
+             }
+         }
         
-        // Handle object rotation
-        function handleRotation(touch) {
-            const deltaX = (touch.clientX - touchStart.x) * 0.5;
-            const deltaY = (touch.clientY - touchStart.y) * 0.5;
-            
-            // Get current rotation
-            const currentRotation = selectedObject.getAttribute('rotation');
-            
-            // Apply rotation changes
-            const newRotation = {
-                x: currentRotation.x + deltaY,
-                y: currentRotation.y + deltaX,
-                z: currentRotation.z
-            };
-            
-            selectedObject.setAttribute('rotation', newRotation);
-            
-            // Update touch start for continuous rotation
-            touchStart.x = touch.clientX;
-            touchStart.y = touch.clientY;
-        }
+                 // Handle object rotation - Simplified and reliable
+         function handleRotation(touch) {
+             const deltaX = (touch.clientX - touchStart.x) * 0.8;
+             const deltaY = (touch.clientY - touchStart.y) * 0.8;
+             
+             // Get current rotation
+             const currentRotation = selectedObject.getAttribute('rotation');
+             
+             // Apply rotation changes (X and Y movement control different axes)
+             const newRotation = {
+                 x: currentRotation.x + deltaY,  // Vertical movement = X rotation
+                 y: currentRotation.y + deltaX,  // Horizontal movement = Y rotation
+                 z: currentRotation.z            // Keep Z rotation unchanged
+             };
+             
+             // Apply rotation
+             selectedObject.setAttribute('rotation', newRotation);
+             
+             // Update touch start for continuous rotation
+             touchStart.x = touch.clientX;
+             touchStart.y = touch.clientY;
+             
+             console.log(`🔄 Rotation: X=${newRotation.x.toFixed(1)}, Y=${newRotation.y.toFixed(1)}`);
+         }
         
-        // Handle object scaling
-        function handleScaling(touch1, touch2) {
-            const currentDistance = getTouchDistance(touch1, touch2);
-            const scaleFactor = currentDistance / lastTouchDistance;
-            
-            // Get current scale
-            const currentScale = selectedObject.getAttribute('scale');
-            
-            // Apply scaling (clamp to reasonable limits)
-            const newScale = {
-                x: Math.max(0.1, Math.min(5, currentScale.x * scaleFactor)),
-                y: Math.max(0.1, Math.min(5, currentScale.y * scaleFactor)),
-                z: Math.max(0.1, Math.min(5, currentScale.z * scaleFactor))
-            };
-            
-            selectedObject.setAttribute('scale', newScale);
-            
-            // Update last distance for continuous scaling
-            lastTouchDistance = currentDistance;
-        }
+                 // Handle object scaling - Simplified single-finger control
+         function handleScaling(touch) {
+             // Use vertical movement for scaling (up = bigger, down = smaller)
+             const deltaY = (touch.clientY - touchStart.y) * 0.01;
+             
+             // Get current scale
+             const currentScale = selectedObject.getAttribute('scale');
+             
+             // Calculate new scale based on vertical movement
+             const scaleChange = 1 + deltaY;
+             const newScale = {
+                 x: Math.max(0.1, Math.min(5, currentScale.x * scaleChange)),
+                 y: Math.max(0.1, Math.min(5, currentScale.y * scaleChange)),
+                 z: Math.max(0.1, Math.min(5, currentScale.z * scaleChange))
+             };
+             
+             // Apply scaling
+             selectedObject.setAttribute('scale', newScale);
+             
+             // Update touch start for continuous scaling
+             touchStart.x = touch.clientX;
+             touchStart.y = touch.clientY;
+             
+             console.log(`📏 Scale: X=${newScale.x.toFixed(2)}, Y=${newScale.y.toFixed(2)}, Z=${newScale.z.toFixed(2)}`);
+         }
         
-        // Handle object movement
-        function handleMovement(touch1, touch2) {
-            const centerX = (touch1.clientX + touch2.clientX) / 2;
-            const centerY = (touch1.clientY + touch2.clientY) / 2;
-            
-            const deltaX = (centerX - touchStart.x) * 0.01;
-            const deltaY = (centerY - touchStart.y) * -0.01;
-            
-            // Get current position
-            const currentPosition = selectedObject.getAttribute('position');
-            
-            // Apply movement
-            const newPosition = {
-                x: currentPosition.x + deltaX,
-                y: currentPosition.y + deltaY,
-                z: currentPosition.z
-            };
-            
-            // Clamp position to reasonable bounds
-            newPosition.x = Math.max(-10, Math.min(10, newPosition.x));
-            newPosition.y = Math.max(-5, Math.min(5, newPosition.y));
-            newPosition.z = Math.max(-15, Math.min(-1, newPosition.z));
-            
-            selectedObject.setAttribute('position', newPosition);
-            
-            // Update touch start for continuous movement
-            touchStart.x = centerX;
-            touchStart.y = centerY;
-        }
+                 // Handle object movement - Simplified single-finger control
+         function handleMovement(touch) {
+             // Use horizontal and vertical movement for X and Y positioning
+             const deltaX = (touch.clientX - touchStart.x) * 0.02;
+             const deltaY = (touch.clientY - touchStart.y) * -0.02; // Invert Y for intuitive control
+             
+             // Get current position
+             const currentPosition = selectedObject.getAttribute('position');
+             
+             // Apply movement
+             const newPosition = {
+                 x: currentPosition.x + deltaX,
+                 y: currentPosition.y + deltaY,
+                 z: currentPosition.z  // Keep Z position unchanged
+             };
+             
+             // Clamp position to reasonable bounds
+             newPosition.x = Math.max(-10, Math.min(10, newPosition.x));
+             newPosition.y = Math.max(-5, Math.min(5, newPosition.y));
+             newPosition.z = Math.max(-15, Math.min(-1, newPosition.z));
+             
+             // Apply position
+             selectedObject.setAttribute('position', newPosition);
+             
+             // Update touch start for continuous movement
+             touchStart.x = touch.clientX;
+             touchStart.y = touch.clientY;
+             
+             console.log(`🚀 Position: X=${newPosition.x.toFixed(2)}, Y=${newPosition.y.toFixed(2)}, Z=${newPosition.z.toFixed(2)}`);
+         }
         
         // ============================================================================
         // UTILITY FUNCTIONS
@@ -886,19 +940,61 @@
             }
         }
         
-        // Toggle menu visibility
-        function toggleMenu() {
-            const controls = document.getElementById('controls');
-            const isVisible = controls.style.display !== 'none';
-            
-            if (isVisible) {
-                controls.style.display = 'none';
-                updateStatus('📱 Menu hidden');
-            } else {
-                controls.style.display = 'block';
-                updateStatus('📱 Menu visible');
-            }
-        }
+                 // Toggle menu visibility
+         function toggleMenu() {
+             const controls = document.getElementById('controls');
+             const isVisible = controls.style.display !== 'none';
+             
+             if (isVisible) {
+                 controls.style.display = 'none';
+                 updateStatus('📱 Menu hidden');
+             } else {
+                 controls.style.display = 'block';
+                 updateStatus('📱 Menu visible');
+             }
+         }
+         
+         // Set gesture mode
+         function setGestureMode(mode) {
+             currentGestureMode = mode;
+             gestureActive = false;
+             isDragging = false;
+             
+             // Update visual feedback
+             updateGestureModeDisplay();
+             
+             // Update status
+             const modeNames = {
+                 'rotate': '🔄 Rotation Mode',
+                 'scale': '📏 Scale Mode', 
+                 'move': '🚀 Move Mode'
+             };
+             updateStatus(`${modeNames[mode]} - Touch and drag to manipulate`);
+             
+             console.log(`🎯 Gesture mode changed to: ${mode}`);
+         }
+         
+         // Update gesture mode display
+         function updateGestureModeDisplay() {
+             // Update mode indicator
+             const modeIndicator = document.getElementById('gesture-mode-indicator');
+             if (modeIndicator) {
+                 const modeIcons = {
+                     'rotate': '🔄',
+                     'scale': '📏',
+                     'move': '🚀'
+                 };
+                 modeIndicator.textContent = `${modeIcons[currentGestureMode]} ${currentGestureMode.toUpperCase()}`;
+             }
+             
+             // Update button states
+             document.querySelectorAll('.gesture-mode-btn').forEach(btn => {
+                 btn.classList.remove('active-mode');
+                 if (btn.getAttribute('data-mode') === currentGestureMode) {
+                     btn.classList.add('active-mode');
+                 }
+             });
+         }
         
         // Clear all placed objects
         function clearAllObjects() {
