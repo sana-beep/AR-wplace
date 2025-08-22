@@ -69,14 +69,99 @@
         background: #0056CC;
         transform: scale(0.95);
       }
-      #camera-controls {
-        position: fixed;
-        bottom: env(safe-area-inset-bottom, 20px);
-        left: 50%;
-        transform: translateX(-50%);
-        z-index: 1000;
-        text-align: center;
-      }
+             #camera-controls {
+         position: fixed;
+         bottom: env(safe-area-inset-bottom, 20px);
+         right: 20px;
+         z-index: 1000;
+         text-align: center;
+       }
+       
+       #menu-toggle {
+         background: #007AFF;
+         color: white;
+         border: none;
+         padding: 15px;
+         border-radius: 50%;
+         font-size: 20px;
+         font-weight: 600;
+         cursor: pointer;
+         -webkit-appearance: none;
+         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+         width: 60px;
+         height: 60px;
+         display: flex;
+         align-items: center;
+         justify-content: center;
+       }
+       
+       #menu-toggle:active {
+         background: #0056CC;
+         transform: scale(0.95);
+       }
+       
+       #menu-panel {
+         position: fixed;
+         bottom: env(safe-area-inset-bottom, 90px);
+         right: 20px;
+         background: rgba(0, 0, 0, 0.9);
+         border-radius: 15px;
+         padding: 15px;
+         z-index: 999;
+         display: none;
+         backdrop-filter: blur(10px);
+         -webkit-backdrop-filter: blur(10px);
+         min-width: 200px;
+       }
+       
+       .menu-item {
+         background: transparent;
+         color: white;
+         border: none;
+         padding: 12px 15px;
+         border-radius: 10px;
+         font-size: 14px;
+         font-weight: 500;
+         margin: 5px 0;
+         cursor: pointer;
+         -webkit-appearance: none;
+         text-align: left;
+         width: 100%;
+         transition: background 0.2s;
+       }
+       
+       .menu-item:hover, .menu-item:active {
+         background: rgba(255, 255, 255, 0.1);
+       }
+       
+       .menu-divider {
+         height: 1px;
+         background: rgba(255, 255, 255, 0.2);
+         margin: 10px 0;
+       }
+       
+       .range-input {
+         background: rgba(255, 255, 255, 0.1);
+         border: 1px solid rgba(255, 255, 255, 0.3);
+         color: white;
+         padding: 8px 12px;
+         border-radius: 8px;
+         font-size: 14px;
+         width: 60px;
+         margin: 0 5px;
+         text-align: center;
+       }
+       
+       .range-input:focus {
+         outline: none;
+         border-color: #007AFF;
+       }
+       
+       .range-label {
+         color: rgba(255, 255, 255, 0.8);
+         font-size: 12px;
+         margin: 5px 0;
+       }
       #camera-status {
         position: fixed;
         top: 50%;
@@ -166,14 +251,32 @@
       </div>
     </div>
 
-    <div id="camera-controls">
-      <button class="ios-button" onclick="switchCamera()">📷 Switch Camera</button>
-      <button class="ios-button" onclick="refreshLocation()">🔄 Refresh</button>
-      <button class="ios-button" onclick="testCameraAccess()">📱 Test Camera</button>
-      <button class="ios-button" onclick="toggleSensorDisplay()">📊 Toggle Sensors</button>
-             <button class="ios-button" onclick="toggleCameraFeed()">👁️ Show Camera</button>
-       <button class="ios-button" onclick="testCompassTrigger()">🧭 Test Compass Trigger</button>
-    </div>
+         <div id="camera-controls">
+       <button id="menu-toggle" onclick="toggleMenu()">⚙️</button>
+       
+       <div id="menu-panel">
+         <div class="range-label">🧭 Compass Range (degrees):</div>
+         <div style="text-align: center; margin: 10px 0;">
+           <input type="number" id="min-range" class="range-input" value="100" min="0" max="359">
+           <span style="color: white;">to</span>
+           <input type="number" id="max-range" class="range-input" value="150" min="0" max="359">
+         </div>
+         <button class="menu-item" onclick="updateCompassRange()">✅ Update Range</button>
+         
+         <div class="menu-divider"></div>
+         
+         <button class="menu-item" onclick="switchCamera()">📷 Switch Camera</button>
+         <button class="menu-item" onclick="refreshLocation()">🔄 Refresh Location</button>
+         <button class="menu-item" onclick="testCameraAccess()">📱 Test Camera</button>
+         <button class="menu-item" onclick="toggleSensorDisplay()">📊 Toggle Sensors</button>
+         <button class="menu-item" onclick="toggleCameraFeed()">👁️ Show Camera</button>
+         <button class="menu-item" onclick="testCompassTrigger()">🧭 Test Compass</button>
+         
+         <div class="menu-divider"></div>
+         
+         <button class="menu-item" onclick="hideMenu()">❌ Close Menu</button>
+       </div>
+     </div>
 
     <div id="camera-status">
       <div id="camera-message">Camera Status</div>
@@ -190,11 +293,12 @@
     </a-scene>
 
     <script>
-      let currentLocation = null;
-      let wplaceData = null;
-      let isFrontCamera = false;
-      let sensorsVisible = true;
-      let cameraFeedVisible = false;
+             let currentLocation = null;
+       let wplaceData = null;
+       let isFrontCamera = false;
+       let sensorsVisible = true;
+       let cameraFeedVisible = false;
+       let compassRange = { min: 100, max: 150 };
       let sensorData = {
         accelerometer: { x: 0, y: 0, z: 0, active: false },
         gyroscope: { x: 0, y: 0, z: 0, active: false },
@@ -303,7 +407,7 @@
                
                // Update compass dot with special trigger indication
                const heading = event.webkitCompassHeading;
-               if (heading >= 100 && heading <= 150) {
+               if (heading >= compassRange.min && heading <= compassRange.max) {
                  updateSensorDot('compass-dot', 'triggered'); // Special state for triggered
                } else {
                  updateSensorDot('compass-dot', true); // Normal active state
@@ -425,7 +529,7 @@
            case 'compass':
              const heading = data.heading;
              let compassStatus = '';
-             if (heading >= 100 && heading <= 150) {
+             if (heading >= compassRange.min && heading <= compassRange.max) {
                compassStatus = ' 🎯 TRIGGERED!';
              }
              displayText = `${heading.toFixed(1)}°${compassStatus}`;
@@ -667,8 +771,8 @@
          if (sensorData.compass.active) {
            const heading = sensorData.compass.heading;
            
-           // Check if heading is between 100-150 degrees
-           if (heading >= 100 && heading <= 150) {
+           // Check if heading is within custom range
+           if (heading >= compassRange.min && heading <= compassRange.max) {
              showCompassTriggeredImage();
            } else {
              hideCompassTriggeredImage();
@@ -685,17 +789,20 @@
            compassImage = document.createElement('a-image');
            compassImage.setAttribute('id', 'compass-triggered-image');
            compassImage.setAttribute('src', 'testimg.jpg');
-           compassImage.setAttribute('position', '0 3 -5');
-           compassImage.setAttribute('width', '2');
-           compassImage.setAttribute('height', '2');
+           compassImage.setAttribute('position', '0 2 -3');
+           compassImage.setAttribute('width', '3');
+           compassImage.setAttribute('height', '3');
            compassImage.setAttribute('rotation', '0 0 0');
+           compassImage.setAttribute('look-at', '[camera]');
            
            // Add to AR scene
            const arContent = document.getElementById('ar-content');
            arContent.appendChild(compassImage);
            
-           // Update status
-           document.getElementById('data-status').textContent = '🎯 Compass Image Active (100-150°)';
+           console.log('🎯 Compass image created and added to AR scene');
+           
+           // Update status with current range
+           document.getElementById('data-status').textContent = `🎯 Compass Image Active (${compassRange.min}-${compassRange.max}°)`;
            document.getElementById('data-status').className = 'success';
          }
        }
@@ -721,48 +828,99 @@
          
          if (sensorData.compass.active) {
            const heading = sensorData.compass.heading;
-           if (heading >= 100 && heading <= 150) {
+           if (heading >= compassRange.min && heading <= compassRange.max) {
              messageDiv.textContent = `🎯 Compass Triggered! (${heading.toFixed(1)}°) - Image should be visible`;
              showCompassTriggeredImage();
            } else {
-             messageDiv.textContent = `🧭 Compass: ${heading.toFixed(1)}° - Not in trigger range (100-150°)`;
+             messageDiv.textContent = `🧭 Compass: ${heading.toFixed(1)}° - Not in trigger range (${compassRange.min}-${compassRange.max}°)`;
            }
          } else {
            messageDiv.textContent = '❌ Compass not active - rotate device to activate';
          }
        }
+       
+       // Menu functions
+       function toggleMenu() {
+         const menuPanel = document.getElementById('menu-panel');
+         if (menuPanel.style.display === 'none' || menuPanel.style.display === '') {
+           menuPanel.style.display = 'block';
+         } else {
+           menuPanel.style.display = 'none';
+         }
+       }
+       
+       function hideMenu() {
+         document.getElementById('menu-panel').style.display = 'none';
+       }
+       
+       // Update compass range from inputs
+       function updateCompassRange() {
+         const minInput = document.getElementById('min-range');
+         const maxInput = document.getElementById('max-range');
+         
+         const newMin = parseInt(minInput.value);
+         const newMax = parseInt(maxInput.value);
+         
+         if (newMin >= 0 && newMax <= 359 && newMin <= newMax) {
+           compassRange.min = newMin;
+           compassRange.max = newMax;
+           
+           // Update status
+           document.getElementById('data-status').textContent = `🧭 Compass Range: ${newMin}°-${newMax}°`;
+           
+           // Check current compass position
+           if (sensorData.compass.active) {
+             checkCompassForSpecialContent();
+           }
+           
+           // Hide menu after update
+           hideMenu();
+         } else {
+           alert('Please enter valid range: 0-359, min ≤ max');
+         }
+       }
 
-              // Initialize the app when the page loads
-        window.addEventListener('load', function() {
-          console.log('AR App loaded successfully!');
-          
-          // iOS-specific initialization
-          if (/iPad|iPhone|iPod/.test(navigator.userAgent)) {
-            console.log('iOS device detected - optimizing for iOS');
-          }
-          
-          // Initialize all sensors
-          initializeSensors();
-          
-          // Get location first
-          getLocation();
-          
-          // Test camera access after a short delay
-          setTimeout(testCameraAccess, 1000);
-          
-          // Update status to show back camera is active
-          document.getElementById('data-status').textContent = '📷 Back Camera Active';
-          document.getElementById('data-status').className = 'success';
-          
-          // Update sensor data display periodically
-          setInterval(function() {
-            Object.keys(sensorData).forEach(sensorType => {
-              if (sensorData[sensorType].active) {
-                updateSensorDisplay(sensorType);
-              }
-            });
-          }, 100);
-        });
+                     // Initialize the app when the page loads
+       window.addEventListener('load', function() {
+         console.log('AR App loaded successfully!');
+         
+         // iOS-specific initialization
+         if (/iPad|iPhone|iPod/.test(navigator.userAgent)) {
+           console.log('iOS device detected - optimizing for iOS');
+         }
+         
+         // Initialize all sensors
+         initializeSensors();
+         
+         // Get location first
+         getLocation();
+         
+         // Test camera access after a short delay
+         setTimeout(testCameraAccess, 1000);
+         
+         // Update status to show back camera is active
+         document.getElementById('data-status').textContent = '📷 Back Camera Active';
+         document.getElementById('data-status').className = 'success';
+         
+         // Update sensor data display periodically
+         setInterval(function() {
+           Object.keys(sensorData).forEach(sensorType => {
+             if (sensorData[sensorType].active) {
+               updateSensorDisplay(sensorType);
+             }
+           });
+         }, 100);
+         
+         // Close menu when clicking outside
+         document.addEventListener('click', function(event) {
+           const menuPanel = document.getElementById('menu-panel');
+           const menuToggle = document.getElementById('menu-toggle');
+           
+           if (!menuPanel.contains(event.target) && !menuToggle.contains(event.target)) {
+             menuPanel.style.display = 'none';
+           }
+         });
+       });
 
       // Handle iOS-specific events
       document.addEventListener('touchstart', function(e) {
