@@ -11,52 +11,31 @@
     <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
     <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
     
-         <style>
-         /* Fullscreen mobile-friendly styling with retro aesthetic */
-         body {
-             margin: 0;
-             overflow: hidden;
-             font-family: 'Courier New', monospace;
-             background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #16213e 100%);
-             color: #00ff41;
-             touch-action: none; /* Prevent default touch behaviors */
-         }
-         
-         /* Retro scanlines effect */
-         body::before {
-             content: '';
-             position: fixed;
-             top: 0;
-             left: 0;
-             width: 100%;
-             height: 100%;
-             background: repeating-linear-gradient(
-                 0deg,
-                 transparent,
-                 transparent 2px,
-                 rgba(0, 255, 65, 0.03) 2px,
-                 rgba(0, 255, 65, 0.03) 4px
-             );
-             pointer-events: none;
-             z-index: 1;
-         }
+    <style>
+        /* Fullscreen mobile-friendly styling */
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #000;
+            color: white;
+            touch-action: none; /* Prevent default touch behaviors */
+        }
         
-                 /* AR Session Status Panel */
-         #status-panel {
-             position: fixed;
-             top: env(safe-area-inset-top, 20px);
-             left: 50%;
-             transform: translateX(-50%);
-             background: rgba(0, 0, 0, 0.9);
-             padding: 15px 25px;
-             border-radius: 8px;
-             z-index: 1000;
-             text-align: center;
-             border: 2px solid #00ff41;
-             box-shadow: 0 0 20px rgba(0, 255, 65, 0.3);
-             font-family: 'Courier New', monospace;
-             min-width: 280px;
-         }
+        /* AR Session Status Panel */
+        #status-panel {
+            position: fixed;
+            top: env(safe-area-inset-top, 20px);
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px 25px;
+            border-radius: 25px;
+            z-index: 1000;
+            text-align: center;
+            backdrop-filter: blur(10px);
+            border: 2px solid #007AFF;
+        }
         
         #status-text {
             font-size: 16px;
@@ -64,59 +43,20 @@
             margin: 0;
         }
         
-                 /* Instructions Panel */
-         #instructions {
-             position: fixed;
-             bottom: env(safe-area-inset-bottom, 20px);
-             left: 50%;
-             transform: translateX(-50%);
-             background: rgba(0, 0, 0, 0.9);
-             padding: 15px;
-             border-radius: 8px;
-             z-index: 1000;
-             text-align: center;
-             border: 2px solid #00ff41;
-             box-shadow: 0 0 20px rgba(0, 255, 65, 0.3);
-             max-width: 300px;
-             transition: all 0.3s ease;
-         }
-         
-         #instructions.minimized {
-             transform: translateX(-50%) translateY(calc(100% - 40px));
-             background: rgba(0, 0, 0, 0.7);
-         }
-         
-         .instructions-header {
-             display: flex;
-             justify-content: space-between;
-             align-items: center;
-             margin-bottom: 10px;
-             padding-bottom: 8px;
-             border-bottom: 1px solid #00ff41;
-         }
-         
-         .instructions-title {
-             font-weight: bold;
-             color: #00ff41;
-             font-size: 14px;
-         }
-         
-         .minimize-btn {
-             background: none;
-             border: 1px solid #00ff41;
-             color: #00ff41;
-             padding: 4px 8px;
-             border-radius: 4px;
-             cursor: pointer;
-             font-family: 'Courier New', monospace;
-             font-size: 12px;
-             transition: all 0.2s ease;
-         }
-         
-         .minimize-btn:hover {
-             background: #00ff41;
-             color: #000;
-         }
+        /* Instructions Panel */
+        #instructions {
+            position: fixed;
+            bottom: env(safe-area-inset-bottom, 20px);
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border-radius: 15px;
+            z-index: 1000;
+            text-align: center;
+            backdrop-filter: blur(10px);
+            max-width: 300px;
+        }
         
         .instruction-text {
             font-size: 12px;
@@ -124,19 +64,18 @@
             opacity: 0.9;
         }
         
-                 /* Surface Detection Visual Feedback */
-         .surface-marker {
-             position: absolute;
-             width: 20px;
-             height: 20px;
-             background: #00ff41;
-             border-radius: 50%;
-             border: 2px solid #ffffff;
-             pointer-events: none;
-             z-index: 999;
-             animation: pulse 2s infinite;
-             box-shadow: 0 0 10px rgba(0, 255, 65, 0.5);
-         }
+        /* Surface Detection Visual Feedback */
+        .surface-marker {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background: #00FF00;
+            border-radius: 50%;
+            border: 2px solid #FFFFFF;
+            pointer-events: none;
+            z-index: 999;
+            animation: pulse 2s infinite;
+        }
         
         @keyframes pulse {
             0% { transform: scale(1); opacity: 1; }
@@ -150,22 +89,18 @@
             outline-offset: 2px;
         }
         
-                 /* Debug Info (hidden by default) */
-         #debug-info {
-             position: fixed;
-             top: env(safe-area-inset-top, 80px);
-             right: 20px;
-             background: rgba(0, 0, 0, 0.9);
-             padding: 15px;
-             border-radius: 8px;
-             font-size: 11px;
-             z-index: 1000;
-             display: none;
-             border: 2px solid #00ff41;
-             box-shadow: 0 0 20px rgba(0, 255, 65, 0.3);
-             font-family: 'Courier New', monospace;
-             min-width: 200px;
-         }
+        /* Debug Info (hidden by default) */
+        #debug-info {
+            position: fixed;
+            top: env(safe-area-inset-top, 80px);
+            right: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px;
+            border-radius: 10px;
+            font-size: 10px;
+            z-index: 1000;
+            display: none;
+        }
         
         /* Control Buttons */
         #controls {
@@ -175,30 +110,20 @@
             z-index: 1000;
         }
         
-                 .control-btn {
-             background: linear-gradient(135deg, #00ff41, #00cc33);
-             color: #000;
-             border: 2px solid #00ff41;
-             padding: 8px 12px;
-             border-radius: 6px;
-             font-size: 12px;
-             margin: 2px;
-             cursor: pointer;
-             font-family: 'Courier New', monospace;
-             font-weight: bold;
-             transition: all 0.2s ease;
-             text-transform: uppercase;
-             letter-spacing: 0.5px;
-         }
-         
-         .control-btn:hover {
-             background: linear-gradient(135deg, #00cc33, #00ff41);
-             transform: translateY(-2px);
-             box-shadow: 0 4px 15px rgba(0, 255, 65, 0.4);
-         }
-         
-         .control-btn:active {
-             transform: translateY(0) scale(0.98);
+        .control-btn {
+            background: #007AFF;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            margin: 2px;
+            cursor: pointer;
+        }
+        
+                 .control-btn:active {
+             background: #0056CC;
+             transform: scale(0.95);
          }
          
          /* Menu Styling */
@@ -207,15 +132,14 @@
              top: env(safe-area-inset-top, 80px);
              right: 20px;
              z-index: 1000;
-             background: rgba(0, 0, 0, 0.95);
+             background: rgba(0, 0, 0, 0.9);
              padding: 20px;
-             border-radius: 8px;
-             border: 2px solid #00ff41;
-             box-shadow: 0 0 30px rgba(0, 255, 65, 0.3);
-             max-width: 300px;
-             max-height: 75vh;
+             border-radius: 15px;
+             backdrop-filter: blur(15px);
+             border: 2px solid #007AFF;
+             max-width: 280px;
+             max-height: 80vh;
              overflow-y: auto;
-             font-family: 'Courier New', monospace;
          }
          
          .menu-section {
@@ -232,145 +156,176 @@
          .menu-section h3 {
              margin: 0 0 10px 0;
              font-size: 14px;
-             color: #00ff41;
+             color: #007AFF;
              text-align: center;
-             text-transform: uppercase;
-             letter-spacing: 1px;
-             border-bottom: 1px solid #00ff41;
-             padding-bottom: 5px;
          }
          
          #menu-toggle {
              font-size: 14px;
              padding: 10px 15px;
-             border-radius: 8px;
-             box-shadow: 0 0 20px rgba(255, 107, 107, 0.3);
-             background: linear-gradient(135deg, #ff6b6b, #ee5a52);
-             border: 2px solid #ff6b6b;
-             font-family: 'Courier New', monospace;
-             font-weight: bold;
-             transition: all 0.3s ease;
+             border-radius: 25px;
+             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
          }
          
-         #menu-toggle:hover {
-             transform: scale(1.05);
-             box-shadow: 0 0 30px rgba(255, 107, 107, 0.5);
-         }
-         
-         /* Gesture Control Styling */
-         .gesture-mode-buttons {
-             display: flex;
-             gap: 5px;
-             margin-bottom: 10px;
-         }
-         
-         .gesture-mode-btn {
-             flex: 1;
-             background: linear-gradient(135deg, #333, #444);
-             color: #00ff41;
-             border: 2px solid #00ff41;
-             padding: 8px 6px;
-             border-radius: 6px;
-             font-size: 11px;
-             cursor: pointer;
-             transition: all 0.2s ease;
-             font-family: 'Courier New', monospace;
-             font-weight: bold;
-             text-transform: uppercase;
-             letter-spacing: 0.5px;
-         }
-         
-         .gesture-mode-btn:hover {
-             background: linear-gradient(135deg, #444, #555);
-             border-color: #00ff41;
-             transform: translateY(-1px);
-             box-shadow: 0 2px 10px rgba(0, 255, 65, 0.3);
-         }
-         
-         .gesture-mode-btn.active-mode {
-             background: linear-gradient(135deg, #00ff41, #00cc33);
-             border-color: #00ff41;
-             color: #000;
-             transform: scale(1.05);
-             box-shadow: 0 0 15px rgba(0, 255, 65, 0.5);
-         }
-         
-         .gesture-instructions {
-             text-align: center;
-             padding: 12px;
-             background: rgba(0, 255, 65, 0.1);
-             border-radius: 6px;
-             border: 1px solid rgba(0, 255, 65, 0.3);
-             margin-top: 10px;
-         }
-         
-         #gesture-mode-indicator {
-             font-weight: bold;
-             font-size: 14px;
-             color: #00ff41;
-             margin-bottom: 6px;
-             text-transform: uppercase;
-             letter-spacing: 1px;
-         }
-         
-         .gesture-hint {
-             font-size: 10px;
-             opacity: 0.8;
-         }
-         
-         /* Ensure proper spacing and prevent overlapping */
-         .menu-section {
-             margin-bottom: 25px;
-             padding-bottom: 20px;
-         }
-         
-         .menu-section:last-child {
-             margin-bottom: 0;
-             padding-bottom: 0;
-         }
-         
-         /* Custom scrollbar for menu */
-         #controls::-webkit-scrollbar {
-             width: 8px;
-         }
-         
-         #controls::-webkit-scrollbar-track {
-             background: rgba(0, 255, 65, 0.1);
-             border-radius: 4px;
-         }
-         
-         #controls::-webkit-scrollbar-thumb {
-             background: #00ff41;
-             border-radius: 4px;
-         }
-         
-         #controls::-webkit-scrollbar-thumb:hover {
-             background: #00cc33;
-         }
-         
-         /* Ensure all content is above scanlines */
-         #status-panel, #instructions, #controls, #debug-info, #menu-toggle {
+         /* Joystick Controls */
+         #joystick-controls {
+             position: fixed;
+             bottom: env(safe-area-inset-bottom, 20px);
+             left: 20px;
              z-index: 1000;
+             background: rgba(0, 0, 0, 0.9);
+             padding: 15px;
+             border-radius: 15px;
+             backdrop-filter: blur(15px);
+             border: 2px solid #007AFF;
+             display: none;
+             min-width: 200px;
+         }
+         
+         .joystick-section {
+             margin-bottom: 15px;
+             text-align: center;
+         }
+         
+         .joystick-section:last-child {
+             margin-bottom: 0;
+         }
+         
+         .joystick-section h4 {
+             margin: 0 0 10px 0;
+             font-size: 12px;
+             color: #007AFF;
+         }
+         
+         .joystick {
+             width: 80px;
+             height: 80px;
+             background: rgba(255, 255, 255, 0.1);
+             border: 2px solid #007AFF;
+             border-radius: 50%;
+             position: relative;
+             margin: 0 auto;
+             cursor: pointer;
+             touch-action: none;
+         }
+         
+         .joystick-knob {
+             width: 20px;
+             height: 20px;
+             background: #007AFF;
+             border-radius: 50%;
+             position: absolute;
+             top: 50%;
+             left: 50%;
+             transform: translate(-50%, -50%);
+             transition: all 0.1s ease;
+         }
+         
+         .joystick.active .joystick-knob {
+             background: #FF6B6B;
+         }
+         
+         .scale-slider {
+             width: 100%;
+             height: 6px;
+             background: rgba(255, 255, 255, 0.2);
+             border-radius: 3px;
+             outline: none;
+             -webkit-appearance: none;
+         }
+         
+         .scale-slider::-webkit-slider-thumb {
+             -webkit-appearance: none;
+             width: 20px;
+             height: 20px;
+             background: #007AFF;
+             border-radius: 50%;
+             cursor: pointer;
+         }
+         
+         .scale-slider::-moz-range-thumb {
+             width: 20px;
+             height: 20px;
+             background: #007AFF;
+             border-radius: 50%;
+             cursor: pointer;
+             border: none;
+         }
+         
+         .scale-value {
+             font-size: 12px;
+             color: #007AFF;
+             margin-top: 5px;
+         }
+         
+         /* Minimize buttons */
+         .minimize-btn {
+             background: #FF6B6B;
+             color: white;
+             border: none;
+             padding: 4px 8px;
+             border-radius: 12px;
+             font-size: 10px;
+             cursor: pointer;
+             margin-left: 10px;
+         }
+         
+         .minimize-btn:hover {
+             background: #FF5252;
+         }
+         
+         /* Minimized state */
+         .minimized {
+             transform: translateY(calc(100% - 40px));
+             background: rgba(0, 0, 0, 0.7);
+         }
+         
+         .minimized .minimize-btn {
+             background: #4CAF50;
          }
     </style>
 </head>
 <body>
-    <!-- Status Panel -->
-    <div id="status-panel">
-        <p id="status-text">🔍 Detecting surfaces...</p>
-    </div>
+         <!-- Status Panel -->
+     <div id="status-panel">
+         <p id="status-text">🔍 Detecting surfaces...</p>
+         <button class="minimize-btn" onclick="toggleStatusPanel()">−</button>
+     </div>
     
          <!-- Instructions Panel -->
      <div id="instructions">
-         <div class="instructions-header">
-             <div class="instructions-title">📚 Instructions</div>
-             <button class="minimize-btn" onclick="toggleInstructions()">−</button>
-         </div>
          <div class="instruction-text">📱 Tap Menu button to open controls</div>
          <div class="instruction-text">🎲 Use Add Cube button to place objects</div>
-         <div class="instruction-text">👆 Select gesture mode (Rotate/Scale/Move)</div>
-         <div class="instruction-text">🖐️ Touch & drag to manipulate objects</div>
-         <div class="instruction-text">🎯 Each mode has different touch behavior</div>
+         <div class="instruction-text">🎮 Use joysticks for precise movement</div>
+         <div class="instruction-text">🔄 One finger: Rotate selected object</div>
+         <div class="instruction-text">📏 Two finger: Scale selected object</div>
+         <div class="instruction-text">🚀 Two finger: Move selected object</div>
+         <button class="minimize-btn" onclick="toggleInstructions()">−</button>
+     </div>
+     
+     <!-- Joystick Controls -->
+     <div id="joystick-controls">
+         <div class="joystick-section">
+             <h4>🎮 X/Y Movement</h4>
+             <div class="joystick" id="xy-joystick">
+                 <div class="joystick-knob" id="xy-knob"></div>
+             </div>
+         </div>
+         
+         <div class="joystick-section">
+             <h4>📏 Z Depth</h4>
+             <div class="joystick" id="z-joystick">
+                 <div class="joystick-knob" id="z-knob"></div>
+             </div>
+         </div>
+         
+         <div class="joystick-section">
+             <h4>🔍 Scale</h4>
+             <input type="range" class="scale-slider" id="scale-slider" min="0.1" max="3" step="0.1" value="1">
+             <div class="scale-value" id="scale-value">1.0x</div>
+         </div>
+         
+         <button class="minimize-btn" onclick="toggleJoysticks()">−</button>
      </div>
     
          <!-- Menu Toggle Button -->
@@ -387,19 +342,6 @@
          </div>
          
          <div class="menu-section">
-             <h3>👆 Gesture Controls</h3>
-             <div class="gesture-mode-buttons">
-                 <button class="gesture-mode-btn active-mode" data-mode="rotate" onclick="setGestureMode('rotate')">🔄 Rotate</button>
-                 <button class="gesture-mode-btn" data-mode="scale" onclick="setGestureMode('scale')">📏 Scale</button>
-                 <button class="gesture-mode-btn" data-mode="move" onclick="setGestureMode('move')">🚀 Move</button>
-             </div>
-             <div class="gesture-instructions">
-                 <div id="gesture-mode-indicator">🔄 ROTATE</div>
-                 <div class="gesture-hint">Touch & drag to manipulate</div>
-             </div>
-         </div>
-         
-         <div class="menu-section">
              <h3>🔍 Surface Detection</h3>
              <button class="control-btn" onclick="enableSurfaceDetection()">✅ Enable Surface</button>
              <button class="control-btn" onclick="toggleSurfaceMarkers()">🟢 Toggle Dots</button>
@@ -409,6 +351,11 @@
              <h3>🧪 Testing</h3>
              <button class="control-btn" onclick="testObjectPlacement()">🧪 Test Object</button>
              <button class="control-btn" onclick="toggleDebug()">🐛 Debug Info</button>
+         </div>
+         
+         <div class="menu-section">
+             <h3>🎮 Controls</h3>
+             <button class="control-btn" onclick="toggleJoysticks()">🎮 Toggle Joysticks</button>
          </div>
      </div>
     
@@ -479,14 +426,13 @@
         let surfaceMarkers = [];
         let surfaceDetectionActive = false;
         
-                 // Gesture control variables
-         let touchStart = { x: 0, y: 0, time: 0 };
-         let touchEnd = { x: 0, y: 0, time: 0 };
-         let isDragging = false;
-         let lastTouchDistance = 0;
-         let lastTouchAngle = 0;
-         let currentGestureMode = 'rotate'; // 'rotate', 'scale', 'move'
-         let gestureActive = false;
+        // Gesture control variables
+        let touchStart = { x: 0, y: 0, time: 0 };
+        let touchEnd = { x: 0, y: 0, time: 0 };
+        let isDragging = false;
+        let lastTouchDistance = 0;
+        let lastTouchAngle = 0;
+        let gestureMode = 'none'; // 'rotate', 'scale', 'move'
         
         // ============================================================================
         // INITIALIZATION FUNCTIONS
@@ -497,6 +443,7 @@
              console.log('🚀 AR Surface Detection App Loading...');
              initializeAR();
              initializeTouchGestures();
+             initializeJoysticks();
              updateStatus('🔍 Loading AR session...');
              
              // Add manual surface detection button functionality
@@ -509,11 +456,6 @@
              
              // Initialize menu state
              document.getElementById('controls').style.display = 'none';
-             
-             // Initialize gesture mode display
-             setTimeout(() => {
-                 updateGestureModeDisplay();
-             }, 100);
          });
         
         // Initialize AR session and surface detection
@@ -828,170 +770,175 @@
             updateStatus('🎯 Object selected - Use gestures to manipulate');
         }
         
-                 // Initialize touch gesture controls
-         function initializeTouchGestures() {
-             console.log('👆 Initializing touch gestures...');
-             
-             // Add touch event listeners to the document
-             document.addEventListener('touchstart', handleTouchStart, { passive: false });
-             document.addEventListener('touchmove', handleTouchMove, { passive: false });
-             document.addEventListener('touchend', handleTouchEnd, { passive: false });
-             
-             // Add click listener for object selection
-             document.addEventListener('click', handleObjectClick);
-             
-             // Ensure gesture mode buttons work properly
-             document.addEventListener('click', function(event) {
-                 if (event.target.classList.contains('gesture-mode-btn')) {
-                     const mode = event.target.getAttribute('data-mode');
-                     if (mode) {
-                         setGestureMode(mode);
-                     }
-                 }
-             });
-         }
+        // Initialize touch gesture controls
+        function initializeTouchGestures() {
+            console.log('👆 Initializing touch gestures...');
+            
+            // Add touch event listeners to the document
+            document.addEventListener('touchstart', handleTouchStart, { passive: false });
+            document.addEventListener('touchmove', handleTouchMove, { passive: false });
+            document.addEventListener('touchend', handleTouchEnd, { passive: false });
+            
+            // Add click listener for object selection
+            document.addEventListener('click', handleObjectClick);
+        }
         
-                 // Handle touch start events - Simplified single-finger control
-         function handleTouchStart(event) {
-             if (!selectedObject) return;
-             
-             // Only handle single finger touches for object manipulation
-             if (event.touches.length === 1) {
-                 const touch = event.touches[0];
-                 touchStart.x = touch.clientX;
-                 touchStart.y = touch.clientY;
-                 touchStart.time = Date.now();
-                 isDragging = true;
-                 gestureActive = true;
-                 
-                 console.log(`👆 Touch started in ${currentGestureMode} mode`);
-                 
-                 // Prevent default to avoid camera movement conflicts
-                 event.preventDefault();
-             }
-         }
+        // Handle touch start events
+        function handleTouchStart(event) {
+            if (!selectedObject) return;
+            
+            // Only prevent default for object manipulation, not camera movement
+            if (event.touches.length === 1) {
+                // Single finger - prepare for rotation
+                touchStart.x = event.touches[0].clientX;
+                touchStart.y = event.touches[0].clientY;
+                touchStart.time = Date.now();
+                isDragging = true;
+                gestureMode = 'rotate';
+                
+                console.log('🔄 Single finger touch - Rotation mode');
+                
+            } else if (event.touches.length === 2) {
+                // Two fingers - prepare for scale or move
+                const touch1 = event.touches[0];
+                const touch2 = event.touches[1];
+                
+                lastTouchDistance = getTouchDistance(touch1, touch2);
+                lastTouchAngle = getTouchAngle(touch1, touch2);
+                
+                // Determine if this is a pinch (scale) or drag (move)
+                const centerX = (touch1.clientX + touch2.clientX) / 2;
+                const centerY = (touch1.clientY + touch2.clientY) / 2;
+                
+                touchStart.x = centerX;
+                touchStart.y = centerY;
+                isDragging = true;
+                
+                // Check if fingers are moving apart/together (scale) vs moving together (move)
+                setTimeout(() => {
+                    if (isDragging) {
+                        const currentDistance = getTouchDistance(touch1, touch2);
+                        const distanceChange = Math.abs(currentDistance - lastTouchDistance);
+                        
+                        if (distanceChange > 10) {
+                            gestureMode = 'scale';
+                            console.log('📏 Two finger touch - Scale mode');
+                        } else {
+                            gestureMode = 'move';
+                            console.log('🚀 Two finger touch - Move mode');
+                        }
+                    }
+                }, 100);
+            }
+        }
         
-                 // Handle touch move events - Simplified single-finger control
-         function handleTouchMove(event) {
-             if (!isDragging || !selectedObject || !gestureActive) return;
-             
-             // Only handle single finger touches
-             if (event.touches.length === 1) {
-                 event.preventDefault();
-                 
-                 const touch = event.touches[0];
-                 
-                 // Handle based on current gesture mode
-                 switch (currentGestureMode) {
-                     case 'rotate':
-                         handleRotation(touch);
-                         break;
-                     case 'scale':
-                         handleScaling(touch);
-                         break;
-                     case 'move':
-                         handleMovement(touch);
-                         break;
-                 }
-             }
-         }
+        // Handle touch move events
+        function handleTouchMove(event) {
+            if (!isDragging || !selectedObject) return;
+            
+            event.preventDefault();
+            
+            if (gestureMode === 'rotate' && event.touches.length === 1) {
+                // Rotate object based on finger movement
+                handleRotation(event.touches[0]);
+                
+            } else if (gestureMode === 'scale' && event.touches.length === 2) {
+                // Scale object based on pinch gesture
+                handleScaling(event.touches[0], event.touches[1]);
+                
+            } else if (gestureMode === 'move' && event.touches.length === 2) {
+                // Move object based on two-finger drag
+                handleMovement(event.touches[0], event.touches[1]);
+            }
+        }
         
-                 // Handle touch end events
-         function handleTouchEnd(event) {
-             if (!isDragging) return;
-             
-             isDragging = false;
-             gestureActive = false;
-             
-             console.log('👆 Touch gesture ended');
-             
-             // Update object data
-             if (selectedObject) {
-                 updateObjectData(selectedObject);
-             }
-         }
+        // Handle touch end events
+        function handleTouchEnd(event) {
+            if (!isDragging) return;
+            
+            isDragging = false;
+            gestureMode = 'none';
+            
+            console.log('👆 Touch gesture ended');
+            
+            // Update object data
+            if (selectedObject) {
+                updateObjectData(selectedObject);
+            }
+        }
         
-                 // Handle object rotation - Simplified and reliable
-         function handleRotation(touch) {
-             const deltaX = (touch.clientX - touchStart.x) * 0.8;
-             const deltaY = (touch.clientY - touchStart.y) * 0.8;
-             
-             // Get current rotation
-             const currentRotation = selectedObject.getAttribute('rotation');
-             
-             // Apply rotation changes (X and Y movement control different axes)
-             const newRotation = {
-                 x: currentRotation.x + deltaY,  // Vertical movement = X rotation
-                 y: currentRotation.y + deltaX,  // Horizontal movement = Y rotation
-                 z: currentRotation.z            // Keep Z rotation unchanged
-             };
-             
-             // Apply rotation
-             selectedObject.setAttribute('rotation', newRotation);
-             
-             // Update touch start for continuous rotation
-             touchStart.x = touch.clientX;
-             touchStart.y = touch.clientY;
-             
-             console.log(`🔄 Rotation: X=${newRotation.x.toFixed(1)}, Y=${newRotation.y.toFixed(1)}`);
-         }
+        // Handle object rotation
+        function handleRotation(touch) {
+            const deltaX = (touch.clientX - touchStart.x) * 0.5;
+            const deltaY = (touch.clientY - touchStart.y) * 0.5;
+            
+            // Get current rotation
+            const currentRotation = selectedObject.getAttribute('rotation');
+            
+            // Apply rotation changes
+            const newRotation = {
+                x: currentRotation.x + deltaY,
+                y: currentRotation.y + deltaX,
+                z: currentRotation.z
+            };
+            
+            selectedObject.setAttribute('rotation', newRotation);
+            
+            // Update touch start for continuous rotation
+            touchStart.x = touch.clientX;
+            touchStart.y = touch.clientY;
+        }
         
-                 // Handle object scaling - Simplified single-finger control
-         function handleScaling(touch) {
-             // Use vertical movement for scaling (up = bigger, down = smaller)
-             const deltaY = (touch.clientY - touchStart.y) * 0.01;
-             
-             // Get current scale
-             const currentScale = selectedObject.getAttribute('scale');
-             
-             // Calculate new scale based on vertical movement
-             const scaleChange = 1 + deltaY;
-             const newScale = {
-                 x: Math.max(0.1, Math.min(5, currentScale.x * scaleChange)),
-                 y: Math.max(0.1, Math.min(5, currentScale.y * scaleChange)),
-                 z: Math.max(0.1, Math.min(5, currentScale.z * scaleChange))
-             };
-             
-             // Apply scaling
-             selectedObject.setAttribute('scale', newScale);
-             
-             // Update touch start for continuous scaling
-             touchStart.x = touch.clientX;
-             touchStart.y = touch.clientY;
-             
-             console.log(`📏 Scale: X=${newScale.x.toFixed(2)}, Y=${newScale.y.toFixed(2)}, Z=${newScale.z.toFixed(2)}`);
-         }
+        // Handle object scaling
+        function handleScaling(touch1, touch2) {
+            const currentDistance = getTouchDistance(touch1, touch2);
+            const scaleFactor = currentDistance / lastTouchDistance;
+            
+            // Get current scale
+            const currentScale = selectedObject.getAttribute('scale');
+            
+            // Apply scaling (clamp to reasonable limits)
+            const newScale = {
+                x: Math.max(0.1, Math.min(5, currentScale.x * scaleFactor)),
+                y: Math.max(0.1, Math.min(5, currentScale.y * scaleFactor)),
+                z: Math.max(0.1, Math.min(5, currentScale.z * scaleFactor))
+            };
+            
+            selectedObject.setAttribute('scale', newScale);
+            
+            // Update last distance for continuous scaling
+            lastTouchDistance = currentDistance;
+        }
         
-                 // Handle object movement - Simplified single-finger control
-         function handleMovement(touch) {
-             // Use horizontal and vertical movement for X and Y positioning
-             const deltaX = (touch.clientX - touchStart.x) * 0.02;
-             const deltaY = (touch.clientY - touchStart.y) * -0.02; // Invert Y for intuitive control
-             
-             // Get current position
-             const currentPosition = selectedObject.getAttribute('position');
-             
-             // Apply movement
-             const newPosition = {
-                 x: currentPosition.x + deltaX,
-                 y: currentPosition.y + deltaY,
-                 z: currentPosition.z  // Keep Z position unchanged
-             };
-             
-             // Clamp position to reasonable bounds
-             newPosition.x = Math.max(-10, Math.min(10, newPosition.x));
-             newPosition.y = Math.max(-5, Math.min(5, newPosition.y));
-             newPosition.z = Math.max(-15, Math.min(-1, newPosition.z));
-             
-             // Apply position
-             selectedObject.setAttribute('position', newPosition);
-             
-             // Update touch start for continuous movement
-             touchStart.x = touch.clientX;
-             touchStart.y = touch.clientY;
-             
-             console.log(`🚀 Position: X=${newPosition.x.toFixed(2)}, Y=${newPosition.y.toFixed(2)}, Z=${newPosition.z.toFixed(2)}`);
-         }
+        // Handle object movement
+        function handleMovement(touch1, touch2) {
+            const centerX = (touch1.clientX + touch2.clientX) / 2;
+            const centerY = (touch1.clientY + touch2.clientY) / 2;
+            
+            const deltaX = (centerX - touchStart.x) * 0.01;
+            const deltaY = (centerY - touchStart.y) * -0.01;
+            
+            // Get current position
+            const currentPosition = selectedObject.getAttribute('position');
+            
+            // Apply movement
+            const newPosition = {
+                x: currentPosition.x + deltaX,
+                y: currentPosition.y + deltaY,
+                z: currentPosition.z
+            };
+            
+            // Clamp position to reasonable bounds
+            newPosition.x = Math.max(-10, Math.min(10, newPosition.x));
+            newPosition.y = Math.max(-5, Math.min(5, newPosition.y));
+            newPosition.z = Math.max(-15, Math.min(-1, newPosition.z));
+            
+            selectedObject.setAttribute('position', newPosition);
+            
+            // Update touch start for continuous movement
+            touchStart.x = centerX;
+            touchStart.y = centerY;
+        }
         
         // ============================================================================
         // UTILITY FUNCTIONS
@@ -1104,46 +1051,33 @@
              }
          }
          
-         // Set gesture mode
-         function setGestureMode(mode) {
-             currentGestureMode = mode;
-             gestureActive = false;
-             isDragging = false;
+         // Toggle joystick controls
+         function toggleJoysticks() {
+             const joysticks = document.getElementById('joystick-controls');
+             const isVisible = joysticks.style.display !== 'none';
              
-             // Update visual feedback
-             updateGestureModeDisplay();
-             
-             // Update status
-             const modeNames = {
-                 'rotate': '🔄 Rotation Mode',
-                 'scale': '📏 Scale Mode', 
-                 'move': '🚀 Move Mode'
-             };
-             updateStatus(`${modeNames[mode]} - Touch and drag to manipulate`);
-             
-             console.log(`🎯 Gesture mode changed to: ${mode}`);
+             if (isVisible) {
+                 joysticks.style.display = 'none';
+                 updateStatus('🎮 Joysticks hidden');
+             } else {
+                 joysticks.style.display = 'block';
+                 updateStatus('🎮 Joysticks visible');
+             }
          }
          
-         // Update gesture mode display
-         function updateGestureModeDisplay() {
-             // Update mode indicator
-             const modeIndicator = document.getElementById('gesture-mode-indicator');
-             if (modeIndicator) {
-                 const modeIcons = {
-                     'rotate': '🔄',
-                     'scale': '📏',
-                     'move': '🚀'
-                 };
-                 modeIndicator.textContent = `${modeIcons[currentGestureMode]} ${currentGestureMode.toUpperCase()}`;
-             }
+         // Toggle status panel
+         function toggleStatusPanel() {
+             const statusPanel = document.getElementById('status-panel');
+             statusPanel.classList.toggle('minimized');
              
-             // Update button states
-             document.querySelectorAll('.gesture-mode-btn').forEach(btn => {
-                 btn.classList.remove('active-mode');
-                 if (btn.getAttribute('data-mode') === currentGestureMode) {
-                     btn.classList.add('active-mode');
-                 }
-             });
+             const minimizeBtn = statusPanel.querySelector('.minimize-btn');
+             if (statusPanel.classList.contains('minimized')) {
+                 minimizeBtn.textContent = '+';
+                 minimizeBtn.title = 'Expand status';
+             } else {
+                 minimizeBtn.textContent = '−';
+                 minimizeBtn.title = 'Minimize status';
+             }
          }
          
          // Toggle instructions panel
@@ -1151,7 +1085,7 @@
              const instructions = document.getElementById('instructions');
              instructions.classList.toggle('minimized');
              
-             const minimizeBtn = document.querySelector('.minimize-btn');
+             const minimizeBtn = instructions.querySelector('.minimize-btn');
              if (instructions.classList.contains('minimized')) {
                  minimizeBtn.textContent = '+';
                  minimizeBtn.title = 'Expand instructions';
@@ -1159,6 +1093,186 @@
                  minimizeBtn.textContent = '−';
                  minimizeBtn.title = 'Minimize instructions';
              }
+         }
+         
+         // Toggle joystick panel
+         function toggleJoysticks() {
+             const joysticks = document.getElementById('joystick-controls');
+             joysticks.classList.toggle('minimized');
+             
+             const minimizeBtn = joysticks.querySelector('.minimize-btn');
+             if (joysticks.classList.contains('minimized')) {
+                 minimizeBtn.textContent = '+';
+                 minimizeBtn.title = 'Expand joysticks';
+             } else {
+                 minimizeBtn.textContent = '−';
+                 minimizeBtn.title = 'Minimize joysticks';
+             }
+         }
+         
+         // Initialize joystick controls
+         function initializeJoysticks() {
+             console.log('🎮 Initializing joystick controls...');
+             
+             // XY Joystick for X/Y movement
+             const xyJoystick = document.getElementById('xy-joystick');
+             const xyKnob = document.getElementById('xy-knob');
+             
+             // Z Joystick for depth
+             const zJoystick = document.getElementById('z-joystick');
+             const zKnob = document.getElementById('z-knob');
+             
+             // Scale slider
+             const scaleSlider = document.getElementById('scale-slider');
+             const scaleValue = document.getElementById('scale-value');
+             
+             // XY Joystick events
+             let xyActive = false;
+             
+             xyJoystick.addEventListener('mousedown', startXYJoystick);
+             xyJoystick.addEventListener('touchstart', startXYJoystick);
+             document.addEventListener('mousemove', moveXYJoystick);
+             document.addEventListener('touchmove', moveXYJoystick);
+             document.addEventListener('mouseup', stopXYJoystick);
+             document.addEventListener('touchend', stopXYJoystick);
+             
+             // Z Joystick events
+             let zActive = false;
+             
+             zJoystick.addEventListener('mousedown', startZJoystick);
+             zJoystick.addEventListener('touchstart', startZJoystick);
+             document.addEventListener('mousemove', moveZJoystick);
+             document.addEventListener('touchmove', moveZJoystick);
+             document.addEventListener('mouseup', stopZJoystick);
+             document.addEventListener('touchend', stopZJoystick);
+             
+             // Scale slider events
+             scaleSlider.addEventListener('input', handleScaleChange);
+             
+             function startXYJoystick(event) {
+                 xyActive = true;
+                 xyJoystick.classList.add('active');
+                 event.preventDefault();
+             }
+             
+             function moveXYJoystick(event) {
+                 if (!xyActive || !selectedObject) return;
+                 
+                 const rect = xyJoystick.getBoundingClientRect();
+                 const centerX = rect.left + rect.width / 2;
+                 const centerY = rect.top + rect.height / 2;
+                 
+                 let clientX, clientY;
+                 if (event.touches) {
+                     clientX = event.touches[0].clientX;
+                     clientY = event.clientY;
+                 } else {
+                     clientX = event.clientX;
+                     clientY = event.clientY;
+                 }
+                 
+                 const deltaX = (clientX - centerX) / (rect.width / 2);
+                 const deltaY = (clientY - centerY) / (rect.height / 2);
+                 
+                 // Clamp to joystick bounds
+                 const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+                 if (distance > 1) {
+                     const clampedX = deltaX / distance;
+                     const clampedY = deltaY / distance;
+                     
+                     // Update knob position
+                     xyKnob.style.left = `${50 + clampedX * 30}%`;
+                     xyKnob.style.top = `${50 + clampedY * 30}%`;
+                     
+                     // Move object
+                     const currentPos = selectedObject.getAttribute('position');
+                     const newPos = {
+                         x: currentPos.x + clampedX * 0.05,
+                         y: currentPos.y - clampedY * 0.05,
+                         z: currentPos.z
+                     };
+                     
+                     // Clamp position
+                     newPos.x = Math.max(-10, Math.min(10, newPos.x));
+                     newPos.y = Math.max(-5, Math.min(5, newPos.y));
+                     
+                     selectedObject.setAttribute('position', newPos);
+                     updateObjectData(selectedObject);
+                 }
+             }
+             
+             function stopXYJoystick() {
+                 xyActive = false;
+                 xyJoystick.classList.remove('active');
+                 
+                 // Reset knob position
+                 xyKnob.style.left = '50%';
+                 xyKnob.style.top = '50%';
+             }
+             
+             function startZJoystick(event) {
+                 zActive = true;
+                 zJoystick.classList.add('active');
+                 event.preventDefault();
+             }
+             
+             function moveZJoystick(event) {
+                 if (!zActive || !selectedObject) {
+                     return;
+                 }
+                 
+                 const rect = zJoystick.getBoundingClientRect();
+                 const centerY = rect.top + rect.height / 2;
+                 
+                 let clientY;
+                 if (event.touches) {
+                     clientY = event.touches[0].clientY;
+                 } else {
+                     clientY = event.clientY;
+                 }
+                 
+                 const deltaY = (clientY - centerY) / (rect.height / 2);
+                 
+                 // Clamp to joystick bounds
+                 const clampedY = Math.max(-1, Math.min(1, deltaY));
+                 
+                 // Update knob position
+                 zKnob.style.top = `${50 + clampedY * 30}%`;
+                 
+                 // Move object in Z direction
+                 const currentPos = selectedObject.getAttribute('position');
+                 const newPos = {
+                     x: currentPos.x,
+                     y: currentPos.y,
+                     z: currentPos.z + clampedY * 0.1
+                 };
+                 
+                 // Clamp Z position
+                 newPos.z = Math.max(-15, Math.min(-1, newPos.z));
+                 
+                 selectedObject.setAttribute('position', newPos);
+                 updateObjectData(selectedObject);
+             }
+             
+             function stopZJoystick() {
+                 zActive = false;
+                 zJoystick.classList.remove('active');
+                 
+                 // Reset knob position
+                 zKnob.style.top = '50%';
+             }
+             
+             function handleScaleChange(event) {
+                 if (!selectedObject) return;
+                 
+                 const scale = parseFloat(event.target.value);
+                 scaleValue.textContent = `${scale.toFixed(1)}x`;
+                 
+                 selectedObject.setAttribute('scale', { x: scale, y: scale, z: scale });
+                 updateObjectData(selectedObject);
+             }
+             
+             console.log('✅ Joystick controls initialized');
          }
         
         // Clear all placed objects
